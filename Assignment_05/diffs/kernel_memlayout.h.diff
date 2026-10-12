@@ -1,0 +1,11 @@
+diff --git a/kernel/memlayout.h b/kernel/memlayout.h
+index 4f026ed..c7fda00 100644
+--- a/kernel/memlayout.h
++++ b/kernel/memlayout.h
+@@ -61,3 +61,6 @@
+ //   TRAPFRAME (p->trapframe, used by the trampoline)
+ //   TRAMPOLINE (the same page as in the kernel)
+ #define TRAPFRAME (TRAMPOLINE - PGSIZE)
++
++// fixed VA where shm_get() maps the single global shared page
++#define SHMVA (TRAPFRAME - PGSIZE)

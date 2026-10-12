@@ -1,0 +1,16 @@
+diff --git a/Makefile b/Makefile
+index af1e7a5..8c9924d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -150,6 +150,11 @@ UPROGS=\
+ 	$U/_forphan\
+ 	$U/_dorphan\
+ 	$U/_sync\
++	$U/_threadtest\
++	$U/_synctest\
++	$U/_prodcons\
++	$U/_deadlock\
++	$U/_priotest\
+ 
+ fs.img: mkfs/mkfs README $(UPROGS)
+ 	mkfs/mkfs fs.img README $(UPROGS)

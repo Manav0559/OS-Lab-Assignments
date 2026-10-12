@@ -1,0 +1,10 @@
+--- xv6-original/kernel/main.c
++++ xv6-a7/kernel/main.c
+@@ -20,6 +20,7 @@
+     kvminithart();
+     procinit();
+     trapinit();
++    seminit();
+     trapinithart();
+     plicinit();
+     plicinithart();

@@ -1,0 +1,15 @@
+diff --git a/user/usys.pl b/user/usys.pl
+index 4d054e8..ea2e6cb 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -43,3 +43,10 @@ entry("sbrk");
+ entry("pause");
+ entry("uptime");
+ entry("sync");
++entry("clone");
++entry("join");
++entry("sem_init");
++entry("sem_wait");
++entry("sem_signal");
++entry("set_priority");
++entry("get_priority");

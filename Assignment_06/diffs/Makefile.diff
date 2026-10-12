@@ -1,0 +1,34 @@
+diff --git a/Makefile b/Makefile
+index 68b4fdd..132f039 100644
+--- a/Makefile
++++ b/Makefile
+@@ -111,6 +111,17 @@ _%: %.o $(ULIB) $U/user.ld
+ $U/usys.S : $U/usys.pl
+ 	perl $U/usys.pl > $U/usys.S
+ 
++# shorter link targets so the DIRSIZ=14 filesystem limit isn't hit;
++# source files keep the assignment-required long names.
++$U/_ddetect: $U/deadlockdetect.o $(ULIB) $U/user.ld
++	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $U/deadlockdetect.o $(ULIB)
++
++$U/_rord_bad: $U/resourceorder_bad.o $(ULIB) $U/user.ld
++	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $U/resourceorder_bad.o $(ULIB)
++
++$U/_rord_fix: $U/resourceorder_fixed.o $(ULIB) $U/user.ld
++	$(LD) $(LDFLAGS) -T $U/user.ld -o $@ $U/resourceorder_fixed.o $(ULIB)
++
+ $U/usys.o : $U/usys.S
+ 	$(CC) $(CFLAGS) -c -o $U/usys.o $U/usys.S
+ 
+@@ -154,6 +165,11 @@ UPROGS=\
+ 	$U/_prodcons\
+ 	$U/_readwrite\
+ 	$U/_dining\
++	$U/_bankers\
++	$U/_ddetect\
++	$U/_rord_bad\
++	$U/_rord_fix\
++	$U/_syncdeadlock\
+ 
+ fs.img: mkfs/mkfs README $(UPROGS)
+ 	mkfs/mkfs fs.img README $(UPROGS)

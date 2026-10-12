@@ -1,0 +1,12 @@
+--- xv6-original/kernel/proc.h
++++ xv6-a7/kernel/proc.h
+@@ -85,4 +85,9 @@
+   struct file *ofile[NOFILE];
+   struct inode *cwd;
+   char name[16];
++
++  int isthread;
++  uint64 trapva;
++  int priority;
++  int waitticks;
+ };

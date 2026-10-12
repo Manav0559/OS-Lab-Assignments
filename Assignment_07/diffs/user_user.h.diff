@@ -1,0 +1,16 @@
+--- xv6-original/user/user.h
++++ xv6-a7/user/user.h
+@@ -24,6 +24,13 @@
+ int pause(int);
+ int uptime(void);
+ int sync(void);
++int clone(void (*)(void *), void *, void *);
++int join(void);
++int sem_init(int, int);
++int sem_wait(int);
++int sem_signal(int);
++int set_priority(int, int);
++int get_priority(int);
+ 
+ int stat(const char *, struct stat *);
+ char *strcpy(char *, const char *);

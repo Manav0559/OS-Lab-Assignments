@@ -1,0 +1,103 @@
+$ dining
+Philosopher 0: THINKING
+Philosopher 1: THINKING
+Philosopher 2: THINKING
+Philosopher 3: THINKING
+Philosopher 4: THINKING
+Philosopher 0: HUNGRY
+Philosopher 0: EATING (cycle 0)
+Philosopher 1: HUNGRY
+Philosopher 2: HUNGRY
+Philosopher 2: EATING (cycle 0)
+Philosopher 3: HUNGRY
+Philosopher 4: HUNGRY
+Philosopher 0: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 0: THINKING
+Philosopher 2: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 2: THINKING
+Philosopher 3: EATING (cycle 0)
+Philosopher 1: EATING (cycle 0)
+Philosopher 0: HUNGRY
+Philosopher 2: HUNGRY
+Philosopher 1: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 1: THINKING
+Philosopher 3: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 3: THINKING
+Philosopher 4: EATING (cycle 0)
+Philosopher 2: EATING (cycle 1)
+Philosopher 1: HUNGRY
+Philosopher 3: HUNGRY
+Philosopher 2: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 2: THINKING
+Philosopher 4: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 4: THINKING
+Philosopher 1: EATING (cycle 1)
+Philosopher 3: EATING (cycle 1)
+Philosopher 2: HUNGRY
+Philosopher 4: HUNGRY
+Philosopher 1: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 1: THINKING
+Philosopher 3: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 3: THINKING
+Philosopher 0: EATING (cycle 1)
+Philosopher 2: EATING (cycle 2)
+Philosopher 1: HUNGRY
+Philosopher 3: HUNGRY
+Philosopher 0: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 0: THINKING
+Philosopher 2: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 2: THINKING
+Philosopher 3: EATING (cycle 2)
+Philosopher 1: EATING (cycle 2)
+Philosopher 0: HUNGRY
+Philosopher 2: HUNGRY
+Philosopher 1: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 1: THINKING
+Philosopher 3: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 3: THINKING
+Philosopher 4: EATING (cycle 1)
+Philosopher 2: EATING (cycle 3)
+Philosopher 1: HUNGRY
+Philosopher 3: HUNGRY
+Philosopher 2: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 2: THINKING
+Philosopher 4: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 4: THINKING
+Philosopher 1: EATING (cycle 3)
+Philosopher 3: EATING (cycle 3)
+Philosopher 2: HUNGRY
+Philosopher 4: HUNGRY
+Philosopher 1: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 1: THINKING
+Philosopher 3: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 3: THINKING
+Philosopher 0: EATING (cycle 2)
+Philosopher 2: EATING (cycle 4)
+Philosopher 1: HUNGRY
+Philosopher 3: HUNGRY
+Philosopher 0: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 0: THINKING
+Philosopher 2: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 3: EATING (cycle 4)
+Philosopher 1: EATING (cycle 4)
+Philosopher 0: HUNGRY
+Philosopher 1: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 3: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 4: EATING (cycle 2)
+Philosopher 4: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 4: THINKING
+Philosopher 0: EATING (cycle 3)
+Philosopher 4: HUNGRY
+Philosopher 0: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 0: THINKING
+Philosopher 4: EATING (cycle 3)
+Philosopher 0: HUNGRY
+Philosopher 4: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 4: THINKING
+Philosopher 0: EATING (cycle 4)
+Philosopher 4: HUNGRY
+Philosopher 0: THINKING -> HUNGRY -> EATING -> THINKING
+Philosopher 4: EATING (cycle 4)
+Philosopher 4: THINKING -> HUNGRY -> EATING -> THINKING
+All philosophers finished 5 cycles, no deadlock
+$ QEMU: Terminated

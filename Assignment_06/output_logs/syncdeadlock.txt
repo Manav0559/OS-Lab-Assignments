@@ -1,0 +1,98 @@
+$ syncdeadlock
+P0 requesting printer
+P0 granted printer
+P0 requesting scanner
+P0 granted scanner
+P0 starts work (cycle 0)
+P1 requesting scanner
+P2 requesting printer
+P2 granted printer
+P2 requesting disk
+P2 granted disk
+P2 starts work (cycle 0)
+P3 requesting printer
+P4 requesting scanner
+P0 releasing scanner and printer
+P1 granted scanner
+P1 requesting disk
+P1 granted disk
+P1 starts work (cycle 0)
+P2 releasing disk and printer
+P3 granted printer
+P3 requesting scanner
+P0 requesting printer
+P0 granted printer
+P0 requesting scanner
+P2 requesting printer
+P1 releasing disk and scanner
+P3 granted scanner
+P3 starts work (cycle 0)
+P1 requesting scanner
+P3 releasing scanner and printer
+P4 granted scanner
+P4 requesting disk
+P4 granted disk
+P4 starts work (cycle 0)
+P2 granted printer
+P2 requesting disk
+P2 granted disk
+P2 starts work (cycle 1)
+P3 requesting printer
+P2 releasing disk and printer
+P3 granted printer
+P3 requesting scanner
+P4 releasing disk and scanner
+P0 granted scanner
+P0 starts work (cycle 1)
+P2 requesting printer
+P4 requesting scanner
+P0 releasing scanner and printer
+P1 granted scanner
+P1 requesting disk
+P1 granted disk
+P1 starts work (cycle 1)
+P2 granted printer
+P2 requesting disk
+P2 granted disk
+P2 starts work (cycle 2)
+P0 requesting printer
+P1 releasing disk and scanner
+P2 releasing disk and printer
+P3 granted scanner
+P3 starts work (cycle 1)
+P0 granted printer
+P0 requesting scanner
+P1 requesting scanner
+P2 finished all cycles
+P3 releasing scanner and printer
+P4 granted scanner
+P4 requesting disk
+P4 granted disk
+P4 starts work (cycle 1)
+P3 requesting printer
+P3 granted printer
+P3 requesting scanner
+P4 releasing disk and scanner
+P0 granted scanner
+P0 starts work (cycle 2)
+P4 requesting scanner
+P0 releasing scanner and printer
+P1 granted scanner
+P1 requesting disk
+P1 granted disk
+P1 starts work (cycle 2)
+P0 finished all cycles
+P1 releasing disk and scanner
+P3 granted scanner
+P3 starts work (cycle 2)
+P1 finished all cycles
+P3 releasing scanner and printer
+P4 granted scanner
+P4 requesting disk
+P4 granted disk
+P4 starts work (cycle 2)
+P3 finished all cycles
+P4 releasing disk and scanner
+P4 finished all cycles
+All processes completed, no deadlock
+$ QEMU: Terminated

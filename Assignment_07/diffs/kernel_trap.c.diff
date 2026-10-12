@@ -1,0 +1,18 @@
+--- xv6-original/kernel/trap.c
++++ xv6-a7/kernel/trap.c
+@@ -90,6 +90,7 @@
+   p->trapframe->kernel_sp = p->kstack + PGSIZE;
+   p->trapframe->kernel_trap = (uint64)usertrap;
+   p->trapframe->kernel_hartid = r_tp();
++  w_sscratch(p->trapva);
+ 
+   unsigned long x = r_sstatus();
+   x &= ~SSTATUS_SPP;
+@@ -134,6 +135,7 @@
+     ticks++;
+     wakeup(&ticks);
+     release(&tickslock);
++    agetick();
+   }
+ 
+   w_stimecmp(r_time() + 1000000);

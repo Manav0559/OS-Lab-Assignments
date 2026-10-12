@@ -1,0 +1,8 @@
+--- xv6-original/kernel/memlayout.h
++++ xv6-a7/kernel/memlayout.h
+@@ -22,3 +22,5 @@
+ #define KSTACK(p) (TRAMPOLINE - ((p) + 1) * 2 * PGSIZE)
+ 
+ #define TRAPFRAME (TRAMPOLINE - PGSIZE)
++#define THREADTRAP(i) (TRAPFRAME - ((i) + 1) * PGSIZE)
++#define USERTOP (TRAPFRAME - (NPROC + 1) * PGSIZE)

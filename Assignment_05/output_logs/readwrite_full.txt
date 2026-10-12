@@ -1,0 +1,18 @@
+$ readwrite
+Reader 0 (pid 4) read shared_data = 0
+Reader 1 (pid 5) read shared_data = 0
+Reader 2 (pid 6) read shared_data = 0
+Writer 0 (pid 7) wrote shared_data = 1
+Writer 1 (pid 8) wrote shared_data = 2
+Reader 0 (pid 4) read shared_data = 2
+Reader 1 (pid 5) read shared_data = 2
+Reader 2 (pid 6) read shared_data = 2
+Writer 0 (pid 7) wrote shared_data = 3
+Writer 1 (pid 8) wrote shared_data = 4
+Reader 0 (pid 4) read shared_data = 4
+Reader 1 (pid 5) read shared_data = 4
+Reader 2 (pid 6) read shared_data = 4
+Writer 0 (pid 7) wrote shared_data = 5
+Writer 1 (pid 8) wrote shared_data = 6
+Final shared_data = 6
+$ QEMU: Terminated

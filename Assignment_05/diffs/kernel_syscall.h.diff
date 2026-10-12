@@ -1,0 +1,12 @@
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index 5a4a39f..1a074b3 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -21,3 +21,7 @@
+ #define SYS_mkdir  20
+ #define SYS_close  21
+ #define SYS_sync   22
++#define SYS_shm_get   23
++#define SYS_sem_init  24
++#define SYS_sem_wait  25
++#define SYS_sem_signal 26

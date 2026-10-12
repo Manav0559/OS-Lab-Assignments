@@ -1,0 +1,23 @@
+$ peterson
+Process 0 in CS, counter = 1
+Process 1 in CS, counter = 2
+Process 0 in CS, counter = 3
+Process 1 in CS, counter = 4
+Process 0 in CS, counter = 5
+Process 1 in CS, counter = 6
+Process 0 in CS, counter = 7
+Process 1 in CS, counter = 8
+Process 0 in CS, counter = 9
+Process 1 in CS, counter = 10
+Process 0 in CS, counter = 11
+Process 1 in CS, counter = 12
+Process 0 in CS, counter = 13
+Process 1 in CS, counter = 14
+Process 0 in CS, counter = 15
+Process 1 in CS, counter = 16
+Process 0 in CS, counter = 17
+Process 1 in CS, counter = 18
+Process 0 in CS, counter = 19
+Process 1 in CS, counter = 20
+Final counter = 20
+$ QEMU: Terminated

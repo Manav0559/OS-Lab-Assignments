@@ -1,0 +1,13 @@
+--- xv6-original/kernel/syscall.h
++++ xv6-a7/kernel/syscall.h
+@@ -20,3 +20,10 @@
+ #define SYS_mkdir  20
+ #define SYS_close  21
+ #define SYS_sync   22
++#define SYS_clone  23
++#define SYS_join   24
++#define SYS_sem_init   25
++#define SYS_sem_wait   26
++#define SYS_sem_signal 27
++#define SYS_set_priority 28
++#define SYS_get_priority 29

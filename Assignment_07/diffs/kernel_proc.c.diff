@@ -1,0 +1,335 @@
+--- xv6-original/kernel/proc.c
++++ xv6-a7/kernel/proc.c
+@@ -106,6 +106,10 @@
+ found:
+   p->pid = allocpid();
+   p->state = USED;
++  p->isthread = 0;
++  p->trapva = TRAPFRAME;
++  p->priority = 10;
++  p->waitticks = 0;
+ 
+   if ((p->trapframe = (struct trapframe *)kalloc()) == 0) {
+     freeproc(p);
+@@ -133,9 +137,13 @@
+   if (p->trapframe)
+     kfree((void *)p->trapframe);
+   p->trapframe = 0;
+-  if (p->pagetable)
++  if (p->pagetable && p->isthread)
++    uvmunmap(p->pagetable, p->trapva, 1, 0);
++  else if (p->pagetable)
+     proc_freepagetable(p->pagetable, p->sz);
+   p->pagetable = 0;
++  p->isthread = 0;
++  p->trapva = 0;
+   p->sz = 0;
+   p->pid = 0;
+   p->name[0] = 0;
+@@ -201,7 +209,7 @@
+ 
+   sz = p->sz;
+   if (n > 0) {
+-    if (sz + n > TRAPFRAME) {
++    if (sz + n > userlimit(p)) {
+       return -1;
+     }
+     if ((sz = uvmalloc(p->pagetable, sz, sz + n, PTE_W)) == 0) {
+@@ -210,8 +218,29 @@
+   } else if (n < 0) {
+     sz = uvmdealloc(p->pagetable, sz, sz + n);
+   }
+-  p->sz = sz;
++  setsz(p, sz);
+   return 0;
++}
++
++uint64
++userlimit(struct proc *p)
++{
++  struct proc *q;
++
++  for (q = proc; q < &proc[NPROC]; q++)
++    if (q != p && q->state != UNUSED && q->pagetable == p->pagetable)
++      return USERTOP;
++  return TRAPFRAME;
++}
++
++void
++setsz(struct proc *p, uint64 sz)
++{
++  struct proc *q;
++
++  for (q = proc; q < &proc[NPROC]; q++)
++    if (q->state != UNUSED && q->pagetable == p->pagetable)
++      q->sz = sz;
+ }
+ 
+ int
+@@ -249,6 +278,60 @@
+ 
+   acquire(&wait_lock);
+   np->parent = p;
++  release(&wait_lock);
++
++  acquire(&np->lock);
++  np->state = RUNNABLE;
++  release(&np->lock);
++
++  return pid;
++}
++
++int
++kclone(uint64 fcn, uint64 arg, uint64 stack)
++{
++  int i, pid;
++  struct proc *np;
++  struct proc *p = myproc();
++
++  if (stack % PGSIZE != 0 || stack + PGSIZE > p->sz || p->sz > USERTOP)
++    return -1;
++
++  if ((np = allocproc()) == 0)
++    return -1;
++
++  proc_freepagetable(np->pagetable, 0);
++  np->pagetable = p->pagetable;
++  np->trapva = THREADTRAP(np - proc);
++  if (mappages(np->pagetable, np->trapva, PGSIZE, (uint64)np->trapframe,
++               PTE_R | PTE_W) < 0) {
++    np->pagetable = 0;
++    freeproc(np);
++    release(&np->lock);
++    return -1;
++  }
++  np->isthread = 1;
++  np->sz = p->sz;
++  np->priority = p->priority;
++
++  *(np->trapframe) = *(p->trapframe);
++  np->trapframe->epc = fcn;
++  np->trapframe->a0 = arg;
++  np->trapframe->sp = stack + PGSIZE;
++
++  for (i = 0; i < NOFILE; i++)
++    if (p->ofile[i])
++      np->ofile[i] = filedup(p->ofile[i]);
++  np->cwd = idup(p->cwd);
++
++  safestrcpy(np->name, p->name, sizeof(p->name));
++
++  pid = np->pid;
++
++  release(&np->lock);
++
++  acquire(&wait_lock);
++  np->parent = p->isthread ? p->parent : p;
+   release(&wait_lock);
+ 
+   acquire(&np->lock);
+@@ -258,6 +341,54 @@
+   return pid;
+ }
+ 
++static int
++jointhread(struct proc *p, int force)
++{
++  struct proc *pp;
++  int havethreads, pid;
++
++  acquire(&wait_lock);
++
++  for (;;) {
++    havethreads = 0;
++    for (pp = proc; pp < &proc[NPROC]; pp++) {
++      if (pp->parent == p && pp->isthread) {
++        acquire(&pp->lock);
++        havethreads = 1;
++        if (pp->state == ZOMBIE) {
++          pid = pp->pid;
++          pp->parent = 0;
++          freeproc(pp);
++          release(&pp->lock);
++          release(&wait_lock);
++          return pid;
++        }
++        release(&pp->lock);
++      }
++    }
++
++    if (!havethreads || (!force && killed(p))) {
++      release(&wait_lock);
++      return -1;
++    }
++
++    sleep_prepare(p);
++    release(&wait_lock);
++    sleep();
++    acquire(&wait_lock);
++  }
++}
++
++int
++kjoin(void)
++{
++  struct proc *p = myproc();
++
++  if (p->isthread)
++    return -1;
++  return jointhread(p, 0);
++}
++
+ void
+ reparent(struct proc *p)
+ {
+@@ -279,6 +410,24 @@
+   if (p == initproc)
+     panic("init exiting");
+ 
++  if (!p->isthread) {
++    struct proc *pp;
++
++    acquire(&wait_lock);
++    for (pp = proc; pp < &proc[NPROC]; pp++) {
++      if (pp->parent == p && pp->isthread) {
++        acquire(&pp->lock);
++        pp->killed = 1;
++        if (pp->state == SLEEPING)
++          pp->state = RUNNABLE;
++        release(&pp->lock);
++      }
++    }
++    release(&wait_lock);
++    while (jointhread(p, 1) > 0)
++      ;
++  }
++
+   for (int fd = 0; fd < NOFILE; fd++) {
+     if (p->ofile[fd]) {
+       struct file *f = p->ofile[fd];
+@@ -322,7 +471,7 @@
+ 
+     havekids = 0;
+     for (pp = proc; pp < &proc[NPROC]; pp++) {
+-      if (pp->parent == p) {
++      if (pp->parent == p && !pp->isthread) {
+ 
+         acquire(&pp->lock);
+ 
+@@ -362,39 +511,101 @@
+ void
+ scheduler(void)
+ {
+-  struct proc *p;
++  struct proc *p, *best;
+   struct cpu *c = mycpu();
++  int k, bestprio, last = 0;
+ 
+   c->proc = 0;
+   for (;;) {
+-
+     intr_on();
+     intr_off();
+ 
+-    int found = 0;
+-    for (p = proc; p < &proc[NPROC]; p++) {
++    best = 0;
++    bestprio = 0;
++    for (k = 1; k <= NPROC; k++) {
++      p = &proc[(last + k) % NPROC];
+       acquire(&p->lock);
+-      if (p->state == RUNNABLE) {
+-
+-        p->state = RUNNING;
+-        c->proc = p;
+-        swtch(&c->context, &p->context);
+-
+-        mycpu()->intena = 0;
+-
+-        c->proc = 0;
+-        found = 1;
++      if (p->state == RUNNABLE && (best == 0 || p->priority < bestprio)) {
++        best = p;
++        bestprio = p->priority;
+       }
+       release(&p->lock);
+     }
+-    if (found == 0) {
+ 
++    if (best == 0) {
+       asm volatile("wfi");
++      continue;
++    }
++
++    acquire(&best->lock);
++    if (best->state == RUNNABLE) {
++      best->state = RUNNING;
++      best->waitticks = 0;
++      c->proc = best;
++      swtch(&c->context, &best->context);
++      mycpu()->intena = 0;
++      c->proc = 0;
++      last = best - proc;
+     }
++    release(&best->lock);
+   }
+ }
+ 
+ void
++agetick(void)
++{
++  struct proc *p;
++
++  for (p = proc; p < &proc[NPROC]; p++) {
++    acquire(&p->lock);
++    if (p->state == RUNNABLE && ++p->waitticks > 30) {
++      if (p->priority > 1)
++        p->priority--;
++      p->waitticks = 0;
++    }
++    release(&p->lock);
++  }
++}
++
++int
++ksetpriority(int pid, int priority)
++{
++  struct proc *p;
++
++  if (priority < 1 || priority > 20)
++    return -1;
++  for (p = proc; p < &proc[NPROC]; p++) {
++    acquire(&p->lock);
++    if (p->pid == pid && p->state != UNUSED) {
++      p->priority = priority;
++      p->waitticks = 0;
++      release(&p->lock);
++      return 0;
++    }
++    release(&p->lock);
++  }
++  return -1;
++}
++
++int
++kgetpriority(int pid)
++{
++  struct proc *p;
++  int prio;
++
++  for (p = proc; p < &proc[NPROC]; p++) {
++    acquire(&p->lock);
++    if (p->pid == pid && p->state != UNUSED && p->state != ZOMBIE) {
++      prio = p->priority;
++      release(&p->lock);
++      return prio;
++    }
++    release(&p->lock);
++  }
++  return -1;
++}
++
++void
+ sched(void)
+ {
+   int intena;

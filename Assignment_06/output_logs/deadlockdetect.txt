@@ -1,0 +1,15 @@
+$ ddetect
+--- Scenario 1: acyclic wait-for graph ---
+Wait-for edges:
+  P0 -> P1
+  P1 -> P2
+No deadlock detected
+
+--- Scenario 2: circular wait among 3 processes ---
+Wait-for edges:
+  P0 -> P1
+  P1 -> P2
+  P2 -> P0
+  P3 -> P4
+Deadlock detected: P0 -> P1 -> P2 -> P0
+$ QEMU: Terminated

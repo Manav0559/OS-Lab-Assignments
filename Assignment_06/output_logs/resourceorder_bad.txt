@@ -1,0 +1,9 @@
+$ rord_bad
+Process A: trying Lock1
+Process A: acquired Lock1
+Process B: trying Lock2
+Process B: acquired Lock2
+Process A: trying Lock2
+Process B: trying Lock1
+QEMU: Terminated
+

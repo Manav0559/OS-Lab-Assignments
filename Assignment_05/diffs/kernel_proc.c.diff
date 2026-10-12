@@ -1,0 +1,15 @@
+diff --git a/kernel/proc.c b/kernel/proc.c
+index f4c1668..f391627 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -211,6 +211,10 @@ proc_freepagetable(pagetable_t pagetable, uint64 sz)
+ {
+   uvmunmap(pagetable, TRAMPOLINE, 1, 0);
+   uvmunmap(pagetable, TRAPFRAME, 1, 0);
++  // Unmap (without freeing) the shm_get() shared page, if this
++  // process ever mapped it -- it's a single global page reused by
++  // every process, so it must survive this process's exit.
++  uvmunmap(pagetable, SHMVA, 1, 0);
+   uvmfree(pagetable, sz);
+ }
+ 

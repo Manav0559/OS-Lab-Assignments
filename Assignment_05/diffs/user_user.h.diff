@@ -1,0 +1,15 @@
+diff --git a/user/user.h b/user/user.h
+index 29aad59..659c2e3 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -25,6 +25,10 @@ char *sys_sbrk(int, int);
+ int pause(int);
+ int uptime(void);
+ int sync(void);
++uint64 shm_get(void);
++int sem_init(int, int);
++int sem_wait(int);
++int sem_signal(int);
+ 
+ // ulib.c
+ int stat(const char *, struct stat *);

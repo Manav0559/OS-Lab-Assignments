@@ -1,0 +1,92 @@
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index cd25557..71335d5 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -110,3 +110,87 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++// Single global page shared by every process that calls shm_get(),
++// mapped at a fixed VA so parent and child (or any two processes)
++// end up pointing at the same physical memory.
++static void *shmpage = 0;
++
++uint64
++sys_shm_get(void)
++{
++  struct proc *p = myproc();
++
++  if (shmpage == 0) {
++    shmpage = kalloc();
++    if (shmpage == 0)
++      return 0;
++    memset(shmpage, 0, PGSIZE);
++  }
++  if (mappages(p->pagetable, SHMVA, PGSIZE, (uint64)shmpage,
++               PTE_R | PTE_W | PTE_U) < 0)
++    return 0;
++  return SHMVA;
++}
++
++// Minimal counting semaphores, backed by sleep()/wakeup(), so
++// processes with separate address spaces can synchronize via
++// syscalls instead of shared-memory spinning.
++#define NSEM 16
++struct sem {
++  struct spinlock lock;
++  int value;
++} sems[NSEM];
++
++uint64
++sys_sem_init(void)
++{
++  int idx, val;
++
++  argint(0, &idx);
++  argint(1, &val);
++  if (idx < 0 || idx >= NSEM)
++    return -1;
++  initlock(&sems[idx].lock, "sem");
++  sems[idx].value = val;
++  return 0;
++}
++
++uint64
++sys_sem_wait(void)
++{
++  int idx;
++  struct sem *s;
++
++  argint(0, &idx);
++  if (idx < 0 || idx >= NSEM)
++    return -1;
++  s = &sems[idx];
++  acquire(&s->lock);
++  while (s->value <= 0) {
++    sleep_prepare(s);
++    release(&s->lock);
++    sleep();
++    acquire(&s->lock);
++  }
++  s->value--;
++  release(&s->lock);
++  return 0;
++}
++
++uint64
++sys_sem_signal(void)
++{
++  int idx;
++  struct sem *s;
++
++  argint(0, &idx);
++  if (idx < 0 || idx >= NSEM)
++    return -1;
++  s = &sems[idx];
++  acquire(&s->lock);
++  s->value++;
++  wakeup(s);
++  release(&s->lock);
++  return 0;
++}

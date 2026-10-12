@@ -1,0 +1,12 @@
+--- xv6-original/kernel/exec.c
++++ xv6-a7/kernel/exec.c
+@@ -32,6 +32,9 @@
+   pagetable_t pagetable = 0, oldpagetable;
+   struct proc *p = myproc();
+ 
++  if (p->isthread)
++    return -1;
++
+   begin_op();
+ 
+   if ((ip = namei(path)) == 0) {

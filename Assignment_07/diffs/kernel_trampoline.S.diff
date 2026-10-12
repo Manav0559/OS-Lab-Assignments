@@ -1,0 +1,23 @@
+--- xv6-original/kernel/trampoline.S
++++ xv6-a7/kernel/trampoline.S
+@@ -9,10 +9,8 @@
+ .globl uservec
+ uservec:
+ 
+-        csrw sscratch, a0
++        csrrw a0, sscratch, a0
+ 
+-        li a0, TRAPFRAME
+-
+         sd ra, 40(a0)
+         sd sp, 48(a0)
+         sd gp, 56(a0)
+@@ -72,7 +70,7 @@
+         csrw satp, a0
+         sfence.vma zero, zero
+ 
+-        li a0, TRAPFRAME
++        csrr a0, sscratch
+ 
+         ld ra, 40(a0)
+         ld sp, 48(a0)
