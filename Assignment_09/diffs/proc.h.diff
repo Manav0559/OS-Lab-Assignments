@@ -1,0 +1,10 @@
+--- xv6-original/proc.h
++++ xv6-a9/proc.h
+@@ -24,6 +24,7 @@
+ 
+ struct proc {
+   uint sz;
++  int nfaults;
+   pde_t* pgdir;
+   char *kstack;
+   enum procstate state;

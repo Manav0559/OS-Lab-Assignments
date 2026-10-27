@@ -1,0 +1,35 @@
+$ pttest
+===== [1] vmprint at start-up =====
+page table of pid 3  (pgdir pa 0xdf29000, sz 12288 bytes)
+  VA          PA          flags
+  0x0  0xdee8000   P=1 W=1 U=1
+  0x1000  0xdee6000   P=1 W=1 U=0   (stack guard page)
+  0x2000  0xdee5000   P=1 W=1 U=1
+valid user pages: 3
+page-table pages: 2 (1 page directory + 1 user page table; 64 kernel page tables not counted)
+
+===== [2] right after sbrk(4 * 4096) (lazy: nothing mapped yet) =====
+page table of pid 3  (pgdir pa 0xdf29000, sz 28672 bytes)
+  VA          PA          flags
+  0x0  0xdee8000   P=1 W=1 U=1
+  0x1000  0xdee6000   P=1 W=1 U=0   (stack guard page)
+  0x2000  0xdee5000   P=1 W=1 U=1
+valid user pages: 3
+page-table pages: 2 (1 page directory + 1 user page table; 64 kernel page tables not counted)
+
+===== [3] after the 4 new pages are first used =====
+page table of pid 3  (pgdir pa 0xdf29000, sz 28672 bytes)
+  VA          PA          flags
+  0x0  0xdee8000   P=1 W=1 U=1
+  0x1000  0xdee6000   P=1 W=1 U=0   (stack guard page)
+  0x2000  0xdee5000   P=1 W=1 U=1
+  0x3000  0xdfbc000   P=1 W=1 U=1
+  0x4000  0xdf76000   P=1 W=1 U=1
+  0x5000  0xdfbf000   P=1 W=1 U=1
+  0x6000  0xdfc0000   P=1 W=1 U=1
+valid user pages: 7
+page-table pages: 2 (1 page directory + 1 user page table; 64 kernel page tables not counted)
+
+valid user pages: start 3, after sbrk 3, after use 7
+new pages = 4 -> exactly four new pages
+$

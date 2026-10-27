@@ -1,0 +1,10 @@
+--- xv6-original/proc.c
++++ xv6-a9/proc.c
+@@ -77,6 +77,7 @@
+ found:
+   p->state = EMBRYO;
+   p->pid = nextpid++;
++  p->nfaults = 0;
+ 
+   release(&ptable.lock);
+ 

@@ -1,0 +1,14 @@
+$ faulttest
+sbrk(32 * 4096) returned 0x3000, page faults so far: 0
+wrote page 0 (va 0x3000), faults handled = 1
+wrote page 3 (va 0x6000), faults handled = 2
+wrote page 10 (va 0xD000), faults handled = 3
+wrote page 20 (va 0x17000), faults handled = 4
+wrote page 31 (va 0x22000), faults handled = 5
+second write to the same 5 pages, faults handled = 5
+page faults handled for 5 pages: 5 -> PASS
+
+child accesses 0x24000 (above sz = 0x23000):
+pid 4 faulttest: invalid page fault at 0x24000 (above sz), killed
+parent still running, its data intact: p[0+100] = x, faults = 5
+$

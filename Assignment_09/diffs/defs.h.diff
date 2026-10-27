@@ -1,0 +1,11 @@
+--- xv6-original/defs.h
++++ xv6-a9/defs.h
+@@ -160,5 +160,8 @@
+ void            switchkvm(void);
+ int             copyout(pde_t*, uint, void*, uint);
+ void            clearpteu(pde_t *pgdir, char *uva);
++uint*           walkpgdir(pde_t*, const void*, int);
++int             vmprint(pde_t*);
++int             lazyalloc(pde_t*, uint);
+ 
+ #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

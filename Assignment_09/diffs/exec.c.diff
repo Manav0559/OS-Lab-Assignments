@@ -1,0 +1,10 @@
+--- xv6-original/exec.c
++++ xv6-a9/exec.c
+@@ -90,6 +90,7 @@
+   oldpgdir = curproc->pgdir;
+   curproc->pgdir = pgdir;
+   curproc->sz = sz;
++  curproc->nfaults = 0;
+   curproc->tf->eip = elf.entry;
+   curproc->tf->esp = sp;
+   switchuvm(curproc);
