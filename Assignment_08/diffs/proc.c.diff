@@ -1,0 +1,18 @@
+--- xv6-original/proc.c
++++ xv6-a8/proc.c
+@@ -113,6 +113,7 @@
+     panic("userinit: out of memory?");
+   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+   p->sz = PGSIZE;
++  p->heapstart = PGSIZE;
+   memset(p->tf, 0, sizeof(*p->tf));
+   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
+   p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
+@@ -169,6 +170,7 @@
+     return -1;
+   }
+   np->sz = curproc->sz;
++  np->heapstart = curproc->heapstart;
+   np->parent = curproc;
+   *np->tf = *curproc->tf;
+ 

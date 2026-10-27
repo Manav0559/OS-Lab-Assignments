@@ -1,0 +1,62 @@
+--- xv6-original/sysproc.c
++++ xv6-a8/sysproc.c
+@@ -6,6 +6,7 @@
+ #include "memlayout.h"
+ #include "mmu.h"
+ #include "proc.h"
++#include "meminfo.h"
+ 
+ int
+ sys_fork(void)
+@@ -51,8 +52,14 @@
+   if(argint(0, &n) < 0)
+     return -1;
+   addr = myproc()->sz;
+-  if(growproc(n) < 0)
+-    return -1;
++  if(n < 0){
++    if(growproc(n) < 0)
++      return -1;
++  } else {
++    if(addr + n >= KERNBASE || addr + n < addr)
++      return -1;
++    myproc()->sz += n;
++  }
+   return addr;
+ }
+ 
+@@ -87,3 +94,34 @@
+   release(&tickslock);
+   return xticks;
+ }
++
++int
++sys_va2pa(void)
++{
++  int va;
++
++  if(argint(0, &va) < 0)
++    return -1;
++  return va2pa(myproc()->pgdir, (uint)va);
++}
++
++int
++sys_getmeminfo(void)
++{
++  struct meminfo *mi;
++  struct proc *p = myproc();
++
++  if(argptr(0, (char**)&mi, sizeof(*mi)) < 0)
++    return -1;
++  kmemstat(&mi->total_pages, &mi->free_pages);
++  mi->proc_pages = p->sz / PGSIZE;
++  mi->pt_pages = ptpages(p->pgdir);
++  return 0;
++}
++
++int
++sys_vmprint(void)
++{
++  vmprint(myproc()->pgdir, myproc()->sz);
++  return 0;
++}

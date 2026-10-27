@@ -1,0 +1,22 @@
+--- xv6-original/syscall.c
++++ xv6-a8/syscall.c
+@@ -85,6 +85,9 @@
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_va2pa(void);
++extern int sys_getmeminfo(void);
++extern int sys_vmprint(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -108,6 +111,9 @@
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_va2pa]   sys_va2pa,
++[SYS_getmeminfo] sys_getmeminfo,
++[SYS_vmprint] sys_vmprint,
+ };
+ 
+ void

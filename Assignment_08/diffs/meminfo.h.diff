@@ -1,0 +1,9 @@
+--- xv6-original/meminfo.h
++++ xv6-a8/meminfo.h
+@@ -0,0 +1,6 @@
++struct meminfo {
++  int total_pages;
++  int free_pages;
++  int proc_pages;
++  int pt_pages;
++};

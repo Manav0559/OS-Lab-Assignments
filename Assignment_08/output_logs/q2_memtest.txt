@@ -1,0 +1,18 @@
+$ memtest
+[1] at start
+    total 57065  free 56789  proc_pages 3  pt_pages 66
+[2] after sbrk(64 pages) and touching them
+    total 57065  free 56725  proc_pages 67  pt_pages 66
+    free pages used: 64, proc_pages grew by 64
+[3] before fork
+    total 57065  free 56724  proc_pages 67  pt_pages 66
+[4] child alive (copy of the parent)
+    total 57065  free 56590  proc_pages 67  pt_pages 66
+    fork consumed 134 free pages
+[5] after child exited and was reaped
+    total 57065  free 56724  proc_pages 67  pt_pages 66
+    leak check: free before fork 56724, after reap 56724 -> PASS (no leak)
+[6] after sbrk(-64 pages) and closing the pipe
+    total 57065  free 56789  proc_pages 3  pt_pages 66
+    free pages vs start: 0 -> back to the original value
+$

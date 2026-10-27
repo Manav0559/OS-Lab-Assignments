@@ -1,0 +1,30 @@
+--- xv6-original/trap.c
++++ xv6-a8/trap.c
+@@ -76,6 +76,27 @@
+     lapiceoi();
+     break;
+ 
++  case T_PGFLT: {
++    uint va = rcr2();
++    struct proc *p = myproc();
++
++    if(p && va < p->sz && va >= p->heapstart){
++      if(lazyalloc(p->pgdir, va) == 0)
++        break;
++      cprintf("pid %d %s: lazy alloc out of memory at 0x%x, killed\n", p->pid, p->name, va);
++      p->killed = 1;
++      break;
++    }
++    if(p && (tf->cs&3) == DPL_USER){
++      cprintf("pid %d %s: invalid access at 0x%x (%s), killed\n", p->pid, p->name, va,
++              va >= p->sz ? "beyond sz" : "below heap / guard page");
++      p->killed = 1;
++      break;
++    }
++    cprintf("kernel page fault at 0x%x eip 0x%x\n", va, tf->eip);
++    panic("trap");
++  }
++
+   default:
+     if(myproc() == 0 || (tf->cs&3) == 0){
+ 

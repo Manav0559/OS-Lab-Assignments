@@ -1,0 +1,9 @@
+--- xv6-original/usys.S
++++ xv6-a8/usys.S
+@@ -29,3 +29,6 @@
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(va2pa)
++SYSCALL(getmeminfo)
++SYSCALL(vmprint)

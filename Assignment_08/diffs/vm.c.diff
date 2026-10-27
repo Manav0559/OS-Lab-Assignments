@@ -1,0 +1,138 @@
+--- xv6-original/vm.c
++++ xv6-a8/vm.c
+@@ -23,7 +23,7 @@
+   lgdt(c->gdt, sizeof(c->gdt));
+ }
+ 
+-static pte_t *
++pte_t *
+ walkpgdir(pde_t *pgdir, const void *va, int alloc)
+ {
+   pde_t *pde;
+@@ -264,9 +264,9 @@
+     return 0;
+   for(i = 0; i < sz; i += PGSIZE){
+     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+-      panic("copyuvm: pte should exist");
++      continue;
+     if(!(*pte & PTE_P))
+-      panic("copyuvm: page not present");
++      continue;
+     pa = PTE_ADDR(*pte);
+     flags = PTE_FLAGS(*pte);
+     if((mem = kalloc()) == 0)
+@@ -316,6 +316,114 @@
+     len -= n;
+     buf += n;
+     va = va0 + PGSIZE;
++  }
++  return 0;
++}
++
++int
++va2pa(pde_t *pgdir, uint va)
++{
++  pde_t *pde = &pgdir[PDX(va)];
++  pte_t *pte;
++  uint pa;
++
++  cprintf("  [kernel] va 0x%x : PDX %d  PTX %d  offset 0x%x", va, PDX(va), PTX(va), va & 0xFFF);
++  if(!(*pde & PTE_P)){
++    cprintf("  -> page directory entry not present\n");
++    return -1;
++  }
++  pte = walkpgdir(pgdir, (void*)va, 0);
++  if(pte == 0 || !(*pte & PTE_P)){
++    cprintf("  -> page table entry not present\n");
++    return -1;
++  }
++  cprintf("  flags P=%d W=%d U=%d", (*pte & PTE_P) != 0, (*pte & PTE_W) != 0, (*pte & PTE_U) != 0);
++  if(!(*pte & PTE_U)){
++    cprintf("  -> not user accessible\n");
++    return -1;
++  }
++  pa = PTE_ADDR(*pte) | (va & 0xFFF);
++  cprintf("  -> pa 0x%x\n", pa);
++  return pa;
++}
++
++int
++ptpages(pde_t *pgdir)
++{
++  int i, n = 1;
++
++  for(i = 0; i < NPDENTRIES; i++)
++    if(pgdir[i] & PTE_P)
++      n++;
++  return n;
++}
++
++static char *
++flagstr(uint f, char *buf)
++{
++  buf[0] = (f & PTE_P) ? 'P' : '-';
++  buf[1] = (f & PTE_W) ? 'W' : '-';
++  buf[2] = (f & PTE_U) ? 'U' : '-';
++  buf[3] = 0;
++  return buf;
++}
++
++void
++vmprint(pde_t *pgdir, uint sz)
++{
++  int i, j, upages = 0, guard = 0, kpde = 0, kpte = 0;
++  uint va, guardva = 0;
++  pte_t *pt;
++  char fb[4];
++
++  cprintf("page directory pa 0x%x  (sz = %d bytes = %d pages)\n", V2P(pgdir), sz, sz / PGSIZE);
++  for(i = 0; i < NPDENTRIES; i++){
++    if(!(pgdir[i] & PTE_P))
++      continue;
++    pt = (pte_t*)P2V(PTE_ADDR(pgdir[i]));
++    if(PGADDR(i, 0, 0) >= KERNBASE){
++      kpde++;
++      for(j = 0; j < NPTENTRIES; j++)
++        if(pt[j] & PTE_P)
++          kpte++;
++      continue;
++    }
++    cprintf("PDE %d  pt pa 0x%x  %s\n", i, PTE_ADDR(pgdir[i]), flagstr(pgdir[i], fb));
++    for(j = 0; j < NPTENTRIES; j++){
++      if(!(pt[j] & PTE_P))
++        continue;
++      va = PGADDR(i, j, 0);
++      cprintf("    PTE %d  va 0x%x  pa 0x%x  %s", j, va, PTE_ADDR(pt[j]), flagstr(pt[j], fb));
++      if(pt[j] & PTE_U)
++        upages++;
++      else {
++        guard++;
++        guardva = va;
++        cprintf("   <- stack guard page (PTE_U clear)");
++      }
++      cprintf("\n");
++    }
+   }
++  cprintf("kernel: %d PDEs above KERNBASE mapping %d pages (not listed)\n", kpde, kpte);
++  cprintf("user-accessible pages %d, guard pages %d at 0x%x\n", upages, guard, guardva);
++  if(upages == sz / PGSIZE - guard)
++    cprintf("check: sz/PGSIZE - guard = %d = user-accessible pages -> MATCH\n", sz / PGSIZE - guard);
++  else
++    cprintf("check: sz/PGSIZE - guard = %d, user-accessible pages %d -> %d heap pages not yet touched (lazy)\n",
++            sz / PGSIZE - guard, upages, sz / PGSIZE - guard - upages);
++}
++
++int
++lazyalloc(pde_t *pgdir, uint va)
++{
++  char *mem;
++
++  if((mem = kalloc()) == 0)
++    return -1;
++  memset(mem, 0, PGSIZE);
++  if(mappages(pgdir, (char*)PGROUNDDOWN(va), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
++    kfree(mem);
++    return -1;
++  }
+   return 0;
+ }

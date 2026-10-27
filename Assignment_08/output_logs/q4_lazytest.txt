@@ -1,0 +1,31 @@
+$ lazytest
+[1] before sbrk
+    free 56789  proc_pages 3  pt_pages 66
+[2] after sbrk(32 MB) - returns immediately
+    free 56789  proc_pages 8195  pt_pages 66
+    sz grew by 8192 pages, free pages used: 0
+[3] after touching 4 pages (0, 8MB, 16MB, 32MB-1)
+    free 56782  proc_pages 8195  pt_pages 69
+    free pages used: 7 = 4 data frames + 3 new page tables
+
+[4] system calls on untouched lazy pages
+    read() into untouched page 0x1403000: 8 bytes, "lazy-ok"
+    write() from untouched page 0x1803000: 4 bytes, first byte 0 (zero-filled)
+    meminfo after the two system calls
+    free 56777  proc_pages 8195  pt_pages 71
+
+[5] fork with a sparse lazy heap
+    child: p[8MB] = B (copied), touched p[28MB] in child only
+    parent after child exit
+    free 56777  proc_pages 8195  pt_pages 71
+    free pages vs before fork: 0 -> no leak
+
+[6] invalid accesses (each in its own child)
+pid 5 lazytest: invalid access at 0x200d000 (beyond sz), killed
+pid 6 lazytest: invalid access at 0x1000 (below heap / guard page), killed
+    parent still running: only the offending children were killed
+
+[7] after sbrk(-32 MB)
+    free 56784  proc_pages 3  pt_pages 71
+    free pages vs start: -5 (5 page-table pages stay allocated until exit)
+$

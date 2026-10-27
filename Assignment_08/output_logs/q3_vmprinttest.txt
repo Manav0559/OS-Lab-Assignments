@@ -1,0 +1,56 @@
+$ vmprinttest
+===== [1] vmprint at start-up =====
+page directory pa 0xdf29000  (sz = 12288 bytes = 3 pages)
+PDE 0  pt pa 0xdee7000  PWU
+    PTE 0  va 0x0  pa 0xdee8000  PWU
+    PTE 1  va 0x1000  pa 0xdee6000  PW-   <- stack guard page (PTE_U clear)
+    PTE 2  va 0x2000  pa 0xdee5000  PWU
+kernel: 64 PDEs above KERNBASE mapping 65536 pages (not listed)
+user-accessible pages 2, guard pages 1 at 0x1000
+check: sz/PGSIZE - guard = 2 = user-accessible pages -> MATCH
+
+===== [2] after sbrk(8 * 4096), heap not touched yet =====
+page directory pa 0xdf29000  (sz = 45056 bytes = 11 pages)
+PDE 0  pt pa 0xdee7000  PWU
+    PTE 0  va 0x0  pa 0xdee8000  PWU
+    PTE 1  va 0x1000  pa 0xdee6000  PW-   <- stack guard page (PTE_U clear)
+    PTE 2  va 0x2000  pa 0xdee5000  PWU
+kernel: 64 PDEs above KERNBASE mapping 65536 pages (not listed)
+user-accessible pages 2, guard pages 1 at 0x1000
+check: sz/PGSIZE - guard = 10, user-accessible pages 2 -> 8 heap pages not yet touched (lazy)
+
+===== [3] after touching all 8 heap pages =====
+page directory pa 0xdf29000  (sz = 45056 bytes = 11 pages)
+PDE 0  pt pa 0xdee7000  PWU
+    PTE 0  va 0x0  pa 0xdee8000  PWU
+    PTE 1  va 0x1000  pa 0xdee6000  PW-   <- stack guard page (PTE_U clear)
+    PTE 2  va 0x2000  pa 0xdee5000  PWU
+    PTE 3  va 0x3000  pa 0xdfbc000  PWU
+    PTE 4  va 0x4000  pa 0xdf76000  PWU
+    PTE 5  va 0x5000  pa 0xdfbf000  PWU
+    PTE 6  va 0x6000  pa 0xdfc0000  PWU
+    PTE 7  va 0x7000  pa 0xdfc1000  PWU
+    PTE 8  va 0x8000  pa 0xdfc2000  PWU
+    PTE 9  va 0x9000  pa 0xdfc3000  PWU
+    PTE 10  va 0xa000  pa 0xdfc4000  PWU
+kernel: 64 PDEs above KERNBASE mapping 65536 pages (not listed)
+user-accessible pages 10, guard pages 1 at 0x1000
+check: sz/PGSIZE - guard = 10 = user-accessible pages -> MATCH
+
+===== [4] after sbrk(-4096) =====
+page directory pa 0xdf29000  (sz = 40960 bytes = 10 pages)
+PDE 0  pt pa 0xdee7000  PWU
+    PTE 0  va 0x0  pa 0xdee8000  PWU
+    PTE 1  va 0x1000  pa 0xdee6000  PW-   <- stack guard page (PTE_U clear)
+    PTE 2  va 0x2000  pa 0xdee5000  PWU
+    PTE 3  va 0x3000  pa 0xdfbc000  PWU
+    PTE 4  va 0x4000  pa 0xdf76000  PWU
+    PTE 5  va 0x5000  pa 0xdfbf000  PWU
+    PTE 6  va 0x6000  pa 0xdfc0000  PWU
+    PTE 7  va 0x7000  pa 0xdfc1000  PWU
+    PTE 8  va 0x8000  pa 0xdfc2000  PWU
+    PTE 9  va 0x9000  pa 0xdfc3000  PWU
+kernel: 64 PDEs above KERNBASE mapping 65536 pages (not listed)
+user-accessible pages 9, guard pages 1 at 0x1000
+check: sz/PGSIZE - guard = 9 = user-accessible pages -> MATCH
+$

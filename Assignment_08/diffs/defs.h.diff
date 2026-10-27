@@ -1,0 +1,21 @@
+--- xv6-original/defs.h
++++ xv6-a8/defs.h
+@@ -57,6 +57,7 @@
+ void            ioapicinit(void);
+ 
+ char*           kalloc(void);
++void            kmemstat(int*, int*);
+ void            kfree(char*);
+ void            kinit1(void*, void*);
+ void            kinit2(void*, void*);
+@@ -160,5 +161,10 @@
+ void            switchkvm(void);
+ int             copyout(pde_t*, uint, void*, uint);
+ void            clearpteu(pde_t *pgdir, char *uva);
++uint*           walkpgdir(pde_t*, const void*, int);
++int             va2pa(pde_t*, uint);
++int             ptpages(pde_t*);
++void            vmprint(pde_t*, uint);
++int             lazyalloc(pde_t*, uint);
+ 
+ #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

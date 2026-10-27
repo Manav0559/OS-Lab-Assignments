@@ -1,0 +1,30 @@
+$ vatest
+=== Part c: VA -> PA translation (pid 3) ===
+global variable g:
+  [kernel] va 0xbec : PDX 0  PTX 0  offset 0xbec  flags P=1 W=1 U=1  -> pa 0xdee8bec
+  [user]   va 0xBEC -> pa 0xDEE8BEC
+local variable:
+  [kernel] va 0x2fc0 : PDX 0  PTX 2  offset 0xfc0  flags P=1 W=1 U=1  -> pa 0xdee5fc0
+  [user]   va 0x2FC0 -> pa 0xDEE5FC0
+malloc() block:
+  [kernel] va 0xaf98 : PDX 0  PTX 10  offset 0xf98  flags P=1 W=1 U=1  -> pa 0xdf76f98
+  [user]   va 0xAF98 -> pa 0xDF76F98
+unmapped address 0x7FFFFFFF:
+  [kernel] va 0x7fffffff : PDX 511  PTX 1023  offset 0xfff  -> page directory entry not present
+  [user]   va 0x7FFFFFFF -> -1 (no user mapping)
+kernel address 0x80100000:
+  [kernel] va 0x80100000 : PDX 512  PTX 256  offset 0x0  flags P=1 W=0 U=0  -> not user accessible
+  [user]   va 0x80100000 -> -1 (no user mapping)
+
+=== Part d: fork, same VA in parent and child ===
+child  pid 4, &g = 0xBEC, g = 100
+child's g:
+  [kernel] va 0xbec : PDX 0  PTX 0  offset 0xbec  flags P=1 W=1 U=1  -> pa 0xdf2dbec
+  [user]   va 0xBEC -> pa 0xDF2DBEC
+parent pid 3, &g = 0xBEC, g = 42
+parent's g:
+  [kernel] va 0xbec : PDX 0  PTX 0  offset 0xbec  flags P=1 W=1 U=1  -> pa 0xdee8bec
+  [user]   va 0xBEC -> pa 0xDEE8BEC
+
+same VA 0xBEC: parent pa 0xDEE8BEC, child pa 0xDF2DBEC -> DIFFERENT physical frames (fork copied the page)
+$
