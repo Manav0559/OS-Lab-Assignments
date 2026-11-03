@@ -1,0 +1,10 @@
+--- xv6-original/usys.S
++++ xv6-a10/usys.S
+@@ -29,3 +29,7 @@
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(memstats)
++SYSCALL(vtop)
++SYSCALL(pageinfo)
++SYSCALL(setreadonly)

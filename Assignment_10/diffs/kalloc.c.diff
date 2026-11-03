@@ -1,0 +1,73 @@
+--- xv6-original/kalloc.c
++++ xv6-a10/kalloc.c
+@@ -16,6 +16,12 @@
+   struct spinlock lock;
+   int use_lock;
+   struct run *freelist;
++
++  uint npages;
++  uint nfree;
++  uint nalloc;
++  uint nfreed;
++  int seeding;
+ } kmem;
+ 
+ void
+@@ -38,8 +44,10 @@
+ {
+   char *p;
+   p = (char*)PGROUNDUP((uint)vstart);
++  kmem.seeding = 1;
+   for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
+     kfree(p);
++  kmem.seeding = 0;
+ }
+ 
+ void
+@@ -57,6 +65,11 @@
+   r = (struct run*)v;
+   r->next = kmem.freelist;
+   kmem.freelist = r;
++  kmem.nfree++;
++  if(kmem.seeding)
++    kmem.npages++;
++  else
++    kmem.nfreed++;
+   if(kmem.use_lock)
+     release(&kmem.lock);
+ }
+@@ -69,9 +82,33 @@
+   if(kmem.use_lock)
+     acquire(&kmem.lock);
+   r = kmem.freelist;
+-  if(r)
++  if(r){
+     kmem.freelist = r->next;
++    kmem.nfree--;
++    kmem.nalloc++;
++  }
+   if(kmem.use_lock)
+     release(&kmem.lock);
+   return (char*)r;
+ }
++
++int
++memstats(void)
++{
++  uint npages, nfree, nalloc, nfreed;
++
++  acquire(&kmem.lock);
++  npages = kmem.npages;
++  nfree = kmem.nfree;
++  nalloc = kmem.nalloc;
++  nfreed = kmem.nfreed;
++  release(&kmem.lock);
++
++  cprintf("  [memstats] total allocated pages : %d\n", nalloc);
++  cprintf("  [memstats] total freed pages     : %d\n", nfreed);
++  cprintf("  [memstats] currently allocated   : %d  (%d KB)\n", nalloc - nfreed, (nalloc - nfreed) * 4);
++  cprintf("  [memstats] available free pages  : %d  (%d KB)\n", nfree, nfree * 4);
++  cprintf("  [memstats] pages managed         : %d  (check: managed - free = %d)\n",
++          npages, npages - nfree);
++  return nalloc - nfreed;
++}

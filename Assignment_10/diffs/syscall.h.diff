@@ -1,0 +1,10 @@
+--- xv6-original/syscall.h
++++ xv6-a10/syscall.h
+@@ -19,3 +19,7 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_memstats    22
++#define SYS_vtop        23
++#define SYS_pageinfo    24
++#define SYS_setreadonly 25

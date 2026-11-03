@@ -1,0 +1,23 @@
+--- xv6-original/trap.c
++++ xv6-a10/trap.c
+@@ -76,6 +76,20 @@
+     lapiceoi();
+     break;
+ 
++  case T_PGFLT:
++    if(myproc() && (tf->cs&3) == DPL_USER){
++      cprintf("pid %d %s: PAGE FAULT (trap 14) at va 0x%x eip 0x%x, err %d = [%s | %s | %s]\n",
++              myproc()->pid, myproc()->name, rcr2(), tf->eip, tf->err,
++              (tf->err & 1) ? "page present" : "page not present",
++              (tf->err & 2) ? "write" : "read",
++              (tf->err & 4) ? "user mode" : "kernel mode");
++      cprintf("pid %d %s: %s -- kill proc\n", myproc()->pid, myproc()->name,
++              ((tf->err & 3) == 3) ? "write to a READ-ONLY page (protection violation)"
++                                   : "access to an unmapped page");
++      myproc()->killed = 1;
++      break;
++    }
++
+   default:
+     if(myproc() == 0 || (tf->cs&3) == 0){
+       cprintf("unexpected trap %d from cpu %d eip %x (cr2=0x%x)\n",

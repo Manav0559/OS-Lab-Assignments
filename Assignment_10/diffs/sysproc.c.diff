@@ -1,0 +1,42 @@
+--- xv6-original/sysproc.c
++++ xv6-a10/sysproc.c
+@@ -87,3 +87,39 @@
+   release(&tickslock);
+   return xticks;
+ }
++
++int
++sys_memstats(void)
++{
++  return memstats();
++}
++
++int
++sys_vtop(void)
++{
++  int va;
++
++  if(argint(0, &va) < 0)
++    return -1;
++  return vtop(myproc()->pgdir, (uint)va);
++}
++
++int
++sys_pageinfo(void)
++{
++  int va;
++
++  if(argint(0, &va) < 0)
++    return -1;
++  return pageinfo(myproc()->pgdir, (uint)va);
++}
++
++int
++sys_setreadonly(void)
++{
++  int va;
++
++  if(argint(0, &va) < 0)
++    return -1;
++  return setreadonly(myproc()->pgdir, (uint)va);
++}

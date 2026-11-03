@@ -1,0 +1,68 @@
+--- xv6-original/vm.c
++++ xv6-a10/vm.c
+@@ -23,7 +23,7 @@
+   lgdt(c->gdt, sizeof(c->gdt));
+ }
+ 
+-static pte_t *
++pte_t *
+ walkpgdir(pde_t *pgdir, const void *va, int alloc)
+ {
+   pde_t *pde;
+@@ -316,6 +316,56 @@
+     len -= n;
+     buf += n;
+     va = va0 + PGSIZE;
++  }
++  return 0;
++}
++
++int
++vtop(pde_t *pgdir, uint va)
++{
++  pte_t *pte;
++
++  pte = walkpgdir(pgdir, (void*)va, 0);
++  if(pte == 0)
++    return -1;
++  if(!(*pte & PTE_P))
++    return -2;
++  if(!(*pte & PTE_U))
++    return -3;
++
++  return PTE_ADDR(*pte) | (va & (PGSIZE - 1));
++}
++
++int
++pageinfo(pde_t *pgdir, uint va)
++{
++  pte_t *pte;
++
++  pte = walkpgdir(pgdir, (void*)va, 0);
++  if(pte == 0 || !(*pte & PTE_P)){
++    cprintf("  [pageinfo] va 0x%x: NOT MAPPED (%s)\n", va,
++            pte == 0 ? "no page table for this 4 MB region" : "PTE present bit is 0");
++    return -1;
+   }
++  cprintf("  [pageinfo] va 0x%x: mapped  PDX=%d PTX=%d  PTE=0x%x\n", va, PDX(va), PTX(va), *pte);
++  cprintf("  [pageinfo]   physical frame number = 0x%x (frame at pa 0x%x)\n",
++          PTE_ADDR(*pte) >> PTXSHIFT, PTE_ADDR(*pte));
++  cprintf("  [pageinfo]   flags: P=%d W=%d U=%d  (%s, %s)\n",
++          (*pte & PTE_P) != 0, (*pte & PTE_W) != 0, (*pte & PTE_U) != 0,
++          (*pte & PTE_W) ? "read/write" : "READ-ONLY",
++          (*pte & PTE_U) ? "user accessible" : "kernel only");
++  return PTE_FLAGS(*pte);
++}
++
++int
++setreadonly(pde_t *pgdir, uint va)
++{
++  pte_t *pte;
++
++  pte = walkpgdir(pgdir, (void*)va, 0);
++  if(pte == 0 || !(*pte & PTE_P) || !(*pte & PTE_U))
++    return -1;
++  *pte &= ~PTE_W;
++  lcr3(V2P(pgdir));
+   return 0;
+ }

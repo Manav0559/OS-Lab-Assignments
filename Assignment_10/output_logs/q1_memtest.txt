@@ -1,0 +1,27 @@
+$ memtest
+memtest: step 1 - statistics before allocation
+  [memstats] total allocated pages : 490
+  [memstats] total freed pages     : 214
+  [memstats] currently allocated   : 276  (1104 KB)
+  [memstats] available free pages  : 56789  (227156 KB)
+  [memstats] pages managed         : 57065  (check: managed - free = 276)
+
+memtest: step 2 - sbrk(262144) to allocate 64 pages
+memtest: heap grew 0x3000 -> 0x43000, wrote 1 byte in each of the 64 pages
+  [memstats] total allocated pages : 554
+  [memstats] total freed pages     : 214
+  [memstats] currently allocated   : 340  (1360 KB)
+  [memstats] available free pages  : 56725  (226900 KB)
+  [memstats] pages managed         : 57065  (check: managed - free = 340)
+memtest: currently allocated changed by 64 pages (expected +64)
+
+memtest: step 3 - sbrk(-262144) to release the pages
+  [memstats] total allocated pages : 554
+  [memstats] total freed pages     : 278
+  [memstats] currently allocated   : 276  (1104 KB)
+  [memstats] available free pages  : 56789  (227156 KB)
+  [memstats] pages managed         : 57065  (check: managed - free = 276)
+memtest: currently allocated changed by -64 pages (expected -64)
+
+memtest: PASS - all 64 pages were allocated and returned to the free list
+$

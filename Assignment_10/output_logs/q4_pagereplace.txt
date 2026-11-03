@@ -1,0 +1,244 @@
+$ pagereplace
+reference string (20 refs): 7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1
+
+FIFO, 3 frames
+   1. ref 7  [ 7 - - ]  FAULT
+   2. ref 0  [ 7 0 - ]  FAULT
+   3. ref 1  [ 7 0 1 ]  FAULT
+   4. ref 2  [ 2 0 1 ]  FAULT (replaced 7)
+   5. ref 0  [ 2 0 1 ]  hit
+   6. ref 3  [ 2 3 1 ]  FAULT (replaced 0)
+   7. ref 0  [ 2 3 0 ]  FAULT (replaced 1)
+   8. ref 4  [ 4 3 0 ]  FAULT (replaced 2)
+   9. ref 2  [ 4 2 0 ]  FAULT (replaced 3)
+  10. ref 3  [ 4 2 3 ]  FAULT (replaced 0)
+  11. ref 0  [ 0 2 3 ]  FAULT (replaced 4)
+  12. ref 3  [ 0 2 3 ]  hit
+  13. ref 2  [ 0 2 3 ]  hit
+  14. ref 1  [ 0 1 3 ]  FAULT (replaced 2)
+  15. ref 2  [ 0 1 2 ]  FAULT (replaced 3)
+  16. ref 0  [ 0 1 2 ]  hit
+  17. ref 1  [ 0 1 2 ]  hit
+  18. ref 7  [ 7 1 2 ]  FAULT (replaced 0)
+  19. ref 0  [ 7 0 2 ]  FAULT (replaced 1)
+  20. ref 1  [ 7 0 1 ]  FAULT (replaced 2)
+  => FIFO page faults = 15, hits = 5
+
+LRU, 3 frames
+   1. ref 7  [ 7 - - ]  FAULT
+   2. ref 0  [ 7 0 - ]  FAULT
+   3. ref 1  [ 7 0 1 ]  FAULT
+   4. ref 2  [ 2 0 1 ]  FAULT (replaced 7)
+   5. ref 0  [ 2 0 1 ]  hit
+   6. ref 3  [ 2 0 3 ]  FAULT (replaced 1)
+   7. ref 0  [ 2 0 3 ]  hit
+   8. ref 4  [ 4 0 3 ]  FAULT (replaced 2)
+   9. ref 2  [ 4 0 2 ]  FAULT (replaced 3)
+  10. ref 3  [ 4 3 2 ]  FAULT (replaced 0)
+  11. ref 0  [ 0 3 2 ]  FAULT (replaced 4)
+  12. ref 3  [ 0 3 2 ]  hit
+  13. ref 2  [ 0 3 2 ]  hit
+  14. ref 1  [ 1 3 2 ]  FAULT (replaced 0)
+  15. ref 2  [ 1 3 2 ]  hit
+  16. ref 0  [ 1 0 2 ]  FAULT (replaced 3)
+  17. ref 1  [ 1 0 2 ]  hit
+  18. ref 7  [ 1 0 7 ]  FAULT (replaced 2)
+  19. ref 0  [ 1 0 7 ]  hit
+  20. ref 1  [ 1 0 7 ]  hit
+  => LRU page faults = 12, hits = 8
+
+Optimal, 3 frames
+   1. ref 7  [ 7 - - ]  FAULT
+   2. ref 0  [ 7 0 - ]  FAULT
+   3. ref 1  [ 7 0 1 ]  FAULT
+   4. ref 2  [ 2 0 1 ]  FAULT (replaced 7)
+   5. ref 0  [ 2 0 1 ]  hit
+   6. ref 3  [ 2 0 3 ]  FAULT (replaced 1)
+   7. ref 0  [ 2 0 3 ]  hit
+   8. ref 4  [ 2 4 3 ]  FAULT (replaced 0)
+   9. ref 2  [ 2 4 3 ]  hit
+  10. ref 3  [ 2 4 3 ]  hit
+  11. ref 0  [ 2 0 3 ]  FAULT (replaced 4)
+  12. ref 3  [ 2 0 3 ]  hit
+  13. ref 2  [ 2 0 3 ]  hit
+  14. ref 1  [ 2 0 1 ]  FAULT (replaced 3)
+  15. ref 2  [ 2 0 1 ]  hit
+  16. ref 0  [ 2 0 1 ]  hit
+  17. ref 1  [ 2 0 1 ]  hit
+  18. ref 7  [ 7 0 1 ]  FAULT (replaced 2)
+  19. ref 0  [ 7 0 1 ]  hit
+  20. ref 1  [ 7 0 1 ]  hit
+  => Optimal page faults = 9, hits = 11
+
+Total page faults with 3 frames: FIFO = 15, LRU = 12, Optimal = 9
+
+Comparison (20 references)
+frames | algorithm | faults | hits | hit ratio | fault ratio
+-------+-----------+--------+------+-----------+------------
+   3   | FIFO      |    15  |   5  |   25.00%  |   75.00%
+   3   | LRU       |    12  |   8  |   40.00%  |   60.00%
+   3   | Optimal   |     9  |  11  |   55.00%  |   45.00%  <- best
+-------+-----------+--------+------+-----------+------------
+   4   | FIFO      |    10  |  10  |   50.00%  |   50.00%
+   4   | LRU       |     8  |  12  |   60.00%  |   40.00%  <- best
+   4   | Optimal   |     8  |  12  |   60.00%  |   40.00%  <- best
+-------+-----------+--------+------+-----------+------------
+   5   | FIFO      |     9  |  11  |   55.00%  |   45.00%
+   5   | LRU       |     7  |  13  |   65.00%  |   35.00%  <- best
+   5   | Optimal   |     7  |  13  |   65.00%  |   35.00%  <- best
+-------+-----------+--------+------+-----------+------------
+$ pagereplace 4
+reference string (20 refs): 7 0 1 2 0 3 0 4 2 3 0 3 2 1 2 0 1 7 0 1
+
+FIFO, 4 frames
+   1. ref 7  [ 7 - - - ]  FAULT
+   2. ref 0  [ 7 0 - - ]  FAULT
+   3. ref 1  [ 7 0 1 - ]  FAULT
+   4. ref 2  [ 7 0 1 2 ]  FAULT
+   5. ref 0  [ 7 0 1 2 ]  hit
+   6. ref 3  [ 3 0 1 2 ]  FAULT (replaced 7)
+   7. ref 0  [ 3 0 1 2 ]  hit
+   8. ref 4  [ 3 4 1 2 ]  FAULT (replaced 0)
+   9. ref 2  [ 3 4 1 2 ]  hit
+  10. ref 3  [ 3 4 1 2 ]  hit
+  11. ref 0  [ 3 4 0 2 ]  FAULT (replaced 1)
+  12. ref 3  [ 3 4 0 2 ]  hit
+  13. ref 2  [ 3 4 0 2 ]  hit
+  14. ref 1  [ 3 4 0 1 ]  FAULT (replaced 2)
+  15. ref 2  [ 2 4 0 1 ]  FAULT (replaced 3)
+  16. ref 0  [ 2 4 0 1 ]  hit
+  17. ref 1  [ 2 4 0 1 ]  hit
+  18. ref 7  [ 2 7 0 1 ]  FAULT (replaced 4)
+  19. ref 0  [ 2 7 0 1 ]  hit
+  20. ref 1  [ 2 7 0 1 ]  hit
+  => FIFO page faults = 10, hits = 10
+
+LRU, 4 frames
+   1. ref 7  [ 7 - - - ]  FAULT
+   2. ref 0  [ 7 0 - - ]  FAULT
+   3. ref 1  [ 7 0 1 - ]  FAULT
+   4. ref 2  [ 7 0 1 2 ]  FAULT
+   5. ref 0  [ 7 0 1 2 ]  hit
+   6. ref 3  [ 3 0 1 2 ]  FAULT (replaced 7)
+   7. ref 0  [ 3 0 1 2 ]  hit
+   8. ref 4  [ 3 0 4 2 ]  FAULT (replaced 1)
+   9. ref 2  [ 3 0 4 2 ]  hit
+  10. ref 3  [ 3 0 4 2 ]  hit
+  11. ref 0  [ 3 0 4 2 ]  hit
+  12. ref 3  [ 3 0 4 2 ]  hit
+  13. ref 2  [ 3 0 4 2 ]  hit
+  14. ref 1  [ 3 0 1 2 ]  FAULT (replaced 4)
+  15. ref 2  [ 3 0 1 2 ]  hit
+  16. ref 0  [ 3 0 1 2 ]  hit
+  17. ref 1  [ 3 0 1 2 ]  hit
+  18. ref 7  [ 7 0 1 2 ]  FAULT (replaced 3)
+  19. ref 0  [ 7 0 1 2 ]  hit
+  20. ref 1  [ 7 0 1 2 ]  hit
+  => LRU page faults = 8, hits = 12
+
+Optimal, 4 frames
+   1. ref 7  [ 7 - - - ]  FAULT
+   2. ref 0  [ 7 0 - - ]  FAULT
+   3. ref 1  [ 7 0 1 - ]  FAULT
+   4. ref 2  [ 7 0 1 2 ]  FAULT
+   5. ref 0  [ 7 0 1 2 ]  hit
+   6. ref 3  [ 3 0 1 2 ]  FAULT (replaced 7)
+   7. ref 0  [ 3 0 1 2 ]  hit
+   8. ref 4  [ 3 0 4 2 ]  FAULT (replaced 1)
+   9. ref 2  [ 3 0 4 2 ]  hit
+  10. ref 3  [ 3 0 4 2 ]  hit
+  11. ref 0  [ 3 0 4 2 ]  hit
+  12. ref 3  [ 3 0 4 2 ]  hit
+  13. ref 2  [ 3 0 4 2 ]  hit
+  14. ref 1  [ 1 0 4 2 ]  FAULT (replaced 3)
+  15. ref 2  [ 1 0 4 2 ]  hit
+  16. ref 0  [ 1 0 4 2 ]  hit
+  17. ref 1  [ 1 0 4 2 ]  hit
+  18. ref 7  [ 1 0 7 2 ]  FAULT (replaced 4)
+  19. ref 0  [ 1 0 7 2 ]  hit
+  20. ref 1  [ 1 0 7 2 ]  hit
+  => Optimal page faults = 8, hits = 12
+
+Total page faults with 4 frames: FIFO = 10, LRU = 8, Optimal = 8
+
+Comparison (20 references)
+frames | algorithm | faults | hits | hit ratio | fault ratio
+-------+-----------+--------+------+-----------+------------
+   3   | FIFO      |    15  |   5  |   25.00%  |   75.00%
+   3   | LRU       |    12  |   8  |   40.00%  |   60.00%
+   3   | Optimal   |     9  |  11  |   55.00%  |   45.00%  <- best
+-------+-----------+--------+------+-----------+------------
+   4   | FIFO      |    10  |  10  |   50.00%  |   50.00%
+   4   | LRU       |     8  |  12  |   60.00%  |   40.00%  <- best
+   4   | Optimal   |     8  |  12  |   60.00%  |   40.00%  <- best
+-------+-----------+--------+------+-----------+------------
+   5   | FIFO      |     9  |  11  |   55.00%  |   45.00%
+   5   | LRU       |     7  |  13  |   65.00%  |   35.00%  <- best
+   5   | Optimal   |     7  |  13  |   65.00%  |   35.00%  <- best
+-------+-----------+--------+------+-----------+------------
+$ pagereplace 3 1,2,3,4,1,2,5,1,2,3,4,5
+reference string (12 refs): 1 2 3 4 1 2 5 1 2 3 4 5
+
+FIFO, 3 frames
+   1. ref 1  [ 1 - - ]  FAULT
+   2. ref 2  [ 1 2 - ]  FAULT
+   3. ref 3  [ 1 2 3 ]  FAULT
+   4. ref 4  [ 4 2 3 ]  FAULT (replaced 1)
+   5. ref 1  [ 4 1 3 ]  FAULT (replaced 2)
+   6. ref 2  [ 4 1 2 ]  FAULT (replaced 3)
+   7. ref 5  [ 5 1 2 ]  FAULT (replaced 4)
+   8. ref 1  [ 5 1 2 ]  hit
+   9. ref 2  [ 5 1 2 ]  hit
+  10. ref 3  [ 5 3 2 ]  FAULT (replaced 1)
+  11. ref 4  [ 5 3 4 ]  FAULT (replaced 2)
+  12. ref 5  [ 5 3 4 ]  hit
+  => FIFO page faults = 9, hits = 3
+
+LRU, 3 frames
+   1. ref 1  [ 1 - - ]  FAULT
+   2. ref 2  [ 1 2 - ]  FAULT
+   3. ref 3  [ 1 2 3 ]  FAULT
+   4. ref 4  [ 4 2 3 ]  FAULT (replaced 1)
+   5. ref 1  [ 4 1 3 ]  FAULT (replaced 2)
+   6. ref 2  [ 4 1 2 ]  FAULT (replaced 3)
+   7. ref 5  [ 5 1 2 ]  FAULT (replaced 4)
+   8. ref 1  [ 5 1 2 ]  hit
+   9. ref 2  [ 5 1 2 ]  hit
+  10. ref 3  [ 3 1 2 ]  FAULT (replaced 5)
+  11. ref 4  [ 3 4 2 ]  FAULT (replaced 1)
+  12. ref 5  [ 3 4 5 ]  FAULT (replaced 2)
+  => LRU page faults = 10, hits = 2
+
+Optimal, 3 frames
+   1. ref 1  [ 1 - - ]  FAULT
+   2. ref 2  [ 1 2 - ]  FAULT
+   3. ref 3  [ 1 2 3 ]  FAULT
+   4. ref 4  [ 1 2 4 ]  FAULT (replaced 3)
+   5. ref 1  [ 1 2 4 ]  hit
+   6. ref 2  [ 1 2 4 ]  hit
+   7. ref 5  [ 1 2 5 ]  FAULT (replaced 4)
+   8. ref 1  [ 1 2 5 ]  hit
+   9. ref 2  [ 1 2 5 ]  hit
+  10. ref 3  [ 3 2 5 ]  FAULT (replaced 1)
+  11. ref 4  [ 4 2 5 ]  FAULT (replaced 3)
+  12. ref 5  [ 4 2 5 ]  hit
+  => Optimal page faults = 7, hits = 5
+
+Total page faults with 3 frames: FIFO = 9, LRU = 10, Optimal = 7
+
+Comparison (12 references)
+frames | algorithm | faults | hits | hit ratio | fault ratio
+-------+-----------+--------+------+-----------+------------
+   3   | FIFO      |     9  |   3  |   25.00%  |   75.00%
+   3   | LRU       |    10  |   2  |   16.67%  |   83.33%
+   3   | Optimal   |     7  |   5  |   41.67%  |   58.33%  <- best
+-------+-----------+--------+------+-----------+------------
+   4   | FIFO      |    10  |   2  |   16.67%  |   83.33%
+   4   | LRU       |     8  |   4  |   33.33%  |   66.67%
+   4   | Optimal   |     6  |   6  |   50.00%  |   50.00%  <- best
+-------+-----------+--------+------+-----------+------------
+   5   | FIFO      |     5  |   7  |   58.33%  |   41.67%  <- best
+   5   | LRU       |     5  |   7  |   58.33%  |   41.67%  <- best
+   5   | Optimal   |     5  |   7  |   58.33%  |   41.67%  <- best
+-------+-----------+--------+------+-----------+------------
+$

@@ -1,0 +1,20 @@
+--- xv6-original/defs.h
++++ xv6-a10/defs.h
+@@ -60,6 +60,7 @@
+ void            kfree(char*);
+ void            kinit1(void*, void*);
+ void            kinit2(void*, void*);
++int             memstats(void);
+ 
+ void            kbdintr(void);
+ 
+@@ -160,5 +161,9 @@
+ void            switchkvm(void);
+ int             copyout(pde_t*, uint, void*, uint);
+ void            clearpteu(pde_t *pgdir, char *uva);
++uint*           walkpgdir(pde_t*, const void*, int);
++int             vtop(pde_t*, uint);
++int             pageinfo(pde_t*, uint);
++int             setreadonly(pde_t*, uint);
+ 
+ #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

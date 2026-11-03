@@ -1,0 +1,31 @@
+$ pagetest
+pagetest: allocated one page with sbrk(4096) at va 0x3000, wrote 'X'
+
+[1] pageinfo() of the new page:
+  [pageinfo] va 0x3000: mapped  PDX=0 PTX=3  PTE=0xdfbc067
+  [pageinfo]   physical frame number = 0xdfbc (frame at pa 0xdfbc000)
+  [pageinfo]   flags: P=1 W=1 U=1  (read/write, user accessible)
+    for comparison, pageinfo() of an unmapped and a kernel address:
+  [pageinfo] va 0xb000: NOT MAPPED (PTE present bit is 0)
+  [pageinfo] va 0x80100000: mapped  PDX=512 PTX=256  PTE=0x100021
+  [pageinfo]   physical frame number = 0x100 (frame at pa 0x100000)
+  [pageinfo]   flags: P=1 W=0 U=0  (READ-ONLY, kernel only)
+
+[2] setreadonly(0x3000) returned 0
+  [pageinfo] va 0x3000: mapped  PDX=0 PTX=3  PTE=0xdfbc065
+  [pageinfo]   physical frame number = 0xdfbc (frame at pa 0xdfbc000)
+  [pageinfo]   flags: P=1 W=0 U=1  (READ-ONLY, user accessible)
+    reads still work: page[0] = 'X'
+    setreadonly(0x80100000) on a kernel page returned -1 (refused)
+
+[3] child process (fork copies the read-only PTE) writes to the page:
+    child pid 4: page[0] = 'Y' ...
+pid 4 pagetest: PAGE FAULT (trap 14) at va 0x3000 eip 0x109, err 7 = [page present | write | user mode]
+pid 4 pagetest: write to a READ-ONLY page (protection violation) -- kill proc
+    parent: child was killed by the page fault before finishing its write
+    parent: page[0] is still 'X'
+
+[4] parent now writes to the read-only page itself:
+pid 3 pagetest: PAGE FAULT (trap 14) at va 0x3000 eip 0x191, err 7 = [page present | write | user mode]
+pid 3 pagetest: write to a READ-ONLY page (protection violation) -- kill proc
+$

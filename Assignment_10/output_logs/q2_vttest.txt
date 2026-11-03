@@ -1,0 +1,30 @@
+$ vttest
+vttest: process size before sbrk = 0x3000
+vttest: sbrk(3*4096) returned 0x3000, new size 0x6000
+
+valid translations (pa = frame address from PTE + page offset):
+  virt. addr   PDX  PTX  offs.  physical addr / result
+  ----------  ----  ---  -----  ----------------------------------------
+  0x00003000     0    3  0x000  0x0dfbc000  heap page 0, offset 0
+  0x00003123     0    3  0x123  0x0dfbc123  heap page 0, offset 0x123
+  0x00004456     0    4  0x456  0x0df76456  heap page 1
+  0x00005fff     0    5  0xfff  0x0dfbffff  heap page 2, last byte
+  0x00000000     0    0  0x000  0x0dee2000  code: main()
+  0x00000fbc     0    0  0xfbc  0x0dee2fbc  data: global_var
+  0x00002fbc     0    2  0xfbc  0x0dedffbc  stack: local_var
+
+  check: pa(base+0x123) - pa(base) = 0x123  (same frame, offset preserved)
+
+invalid / unmapped translations:
+  virt. addr   PDX  PTX  offs.  physical addr / result
+  ----------  ----  ---  -----  ----------------------------------------
+  0x0000b000     0   11  0x000  INVALID: PTE not present (page unmapped)  <- 5 pages above process size
+  0x40000000   256    0  0x000  INVALID: no page table (PDE not present)  <- 1 GB, nothing mapped there
+  0x00001000     0    1  0x000  INVALID: PTE_U clear (kernel/guard page)  <- stack guard page
+  0x80100000   512  256  0x000  INVALID: PTE_U clear (kernel/guard page)  <- kernel text (KERNBASE+1MB)
+
+after sbrk(-4096) released heap page 2:
+  virt. addr   PDX  PTX  offs.  physical addr / result
+  ----------  ----  ---  -----  ----------------------------------------
+  0x00005000     0    5  0x000  INVALID: PTE not present (page unmapped)  <- heap page 2 after sbrk(-4096)
+$
