@@ -1,0 +1,514 @@
+diff --git a/Makefile b/Makefile
+index 09d790c..b6f24cf 100644
+--- a/Makefile
++++ b/Makefile
+@@ -15,6 +15,7 @@ OBJS = \
+ 	picirq.o\
+ 	pipe.o\
+ 	proc.o\
++	sem.o\
+ 	sleeplock.o\
+ 	spinlock.o\
+ 	string.o\
+@@ -38,6 +39,8 @@ OBJS = \
+ ifndef TOOLPREFIX
+ TOOLPREFIX := $(shell if i386-jos-elf-objdump -i 2>&1 | grep '^elf32-i386$$' >/dev/null 2>&1; \
+ 	then echo 'i386-jos-elf-'; \
++	elif i686-elf-objdump -i 2>&1 | grep '^elf32-i386$$' >/dev/null 2>&1; \
++	then echo 'i686-elf-'; \
+ 	elif objdump -i 2>&1 | grep 'elf32-i386' >/dev/null 2>&1; \
+ 	then echo ''; \
+ 	else echo "***" 1>&2; \
+@@ -76,7 +79,7 @@ AS = $(TOOLPREFIX)gas
+ LD = $(TOOLPREFIX)ld
+ OBJCOPY = $(TOOLPREFIX)objcopy
+ OBJDUMP = $(TOOLPREFIX)objdump
+-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
++CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -Wno-array-bounds -Wno-infinite-recursion -Wno-stringop-overflow -Wno-unused-but-set-variable -fno-omit-frame-pointer
+ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+ ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
+ # FreeBSD ld wants ``elf_i386_fbsd''
+@@ -181,6 +184,8 @@ UPROGS=\
+ 	_usertests\
+ 	_wc\
+ 	_zombie\
++	_synctest\
++	_memtest\
+ 
+ fs.img: mkfs README $(UPROGS)
+ 	./mkfs fs.img README $(UPROGS)
+diff --git a/defs.h b/defs.h
+index 82fb982..a8450ab 100644
+--- a/defs.h
++++ b/defs.h
+@@ -68,6 +68,7 @@ char*           kalloc(void);
+ void            kfree(char*);
+ void            kinit1(void*, void*);
+ void            kinit2(void*, void*);
++int             freepages(void);
+ 
+ // kbd.c
+ void            kbdintr(void);
+@@ -124,6 +125,12 @@ void            yield(void);
+ // swtch.S
+ void            swtch(struct context**, struct context*);
+ 
++// sem.c
++void            seminit(void);
++int             sem_init(int, int);
++int             sem_wait(int);
++int             sem_post(int);
++
+ // spinlock.c
+ void            acquire(struct spinlock*);
+ void            getcallerpcs(void*, uint*);
+@@ -174,6 +181,7 @@ void            uartputc(int);
+ void            seginit(void);
+ void            kvmalloc(void);
+ pde_t*          setupkvm(void);
++int             uva2pa(pde_t*, uint);
+ char*           uva2ka(pde_t*, char*);
+ int             allocuvm(pde_t*, uint, uint);
+ int             deallocuvm(pde_t*, uint, uint);
+diff --git a/kalloc.c b/kalloc.c
+index 14cd4f4..549c851 100644
+--- a/kalloc.c
++++ b/kalloc.c
+@@ -21,6 +21,7 @@ struct {
+   struct spinlock lock;
+   int use_lock;
+   struct run *freelist;
++  int nfree;          // number of pages on freelist
+ } kmem;
+ 
+ // Initialization happens in two phases.
+@@ -72,6 +73,7 @@ kfree(char *v)
+   r = (struct run*)v;
+   r->next = kmem.freelist;
+   kmem.freelist = r;
++  kmem.nfree++;
+   if(kmem.use_lock)
+     release(&kmem.lock);
+ }
+@@ -87,10 +89,26 @@ kalloc(void)
+   if(kmem.use_lock)
+     acquire(&kmem.lock);
+   r = kmem.freelist;
+-  if(r)
++  if(r){
+     kmem.freelist = r->next;
++    kmem.nfree--;
++  }
+   if(kmem.use_lock)
+     release(&kmem.lock);
+   return (char*)r;
+ }
+ 
++
++// Number of free physical pages (Question 2).
++int
++freepages(void)
++{
++  int n;
++
++  if(kmem.use_lock)
++    acquire(&kmem.lock);
++  n = kmem.nfree;
++  if(kmem.use_lock)
++    release(&kmem.lock);
++  return n;
++}
+diff --git a/main.c b/main.c
+index 9924e64..470352a 100644
+--- a/main.c
++++ b/main.c
+@@ -27,6 +27,7 @@ main(void)
+   consoleinit();   // console hardware
+   uartinit();      // serial port
+   pinit();         // process table
++  seminit();       // semaphore table
+   tvinit();        // trap vectors
+   binit();         // buffer cache
+   fileinit();      // file table
+diff --git a/memtest.c b/memtest.c
+new file mode 100644
+index 0000000..56a1468
+--- /dev/null
++++ b/memtest.c
+@@ -0,0 +1,66 @@
++// Question 2(c): free physical pages and virtual-to-physical translation.
++
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int gvar = 42;     // global variable in the data segment
++
++int
++main(void)
++{
++  int start, after_sbrk, before_fork, after_fork, after_wait;
++  int pa_parent, pa_child, pid;
++  int fd[2];
++
++  // (i) at start-up
++  start = freepages();
++  printf(1, "(i)   freepages() at start-up        = %d\n", start);
++
++  // (ii) after growing the heap by 10 pages
++  if(sbrk(10 * 4096) == (char*)-1){
++    printf(1, "memtest: sbrk failed\n");
++    exit();
++  }
++  after_sbrk = freepages();
++  printf(1, "(ii)  freepages() after sbrk(10*4096) = %d  (used %d pages)\n",
++         after_sbrk, start - after_sbrk);
++
++  // (iii) virtual and physical address of a global variable
++  printf(1, "(iii) &gvar: va = 0x%x  pa = 0x%x\n", (uint)&gvar, va2pa((int)&gvar));
++
++  // (iv) an address that is not mapped
++  printf(1, "(iv)  va2pa(0x7FFFFFFF) = %d\n", va2pa(0x7FFFFFFF));
++
++  // (v) fork: same virtual address, different physical pages
++  pipe(fd);                       // child sends its pa to the parent
++  before_fork = freepages();
++  pid = fork();
++  if(pid < 0){
++    printf(1, "memtest: fork failed\n");
++    exit();
++  }
++  if(pid == 0){
++    pa_child = va2pa((int)&gvar);
++    write(fd[1], &pa_child, sizeof(pa_child));
++    exit();
++  }
++  after_fork = freepages();
++  pa_parent = va2pa((int)&gvar);
++  read(fd[0], &pa_child, sizeof(pa_child));
++  wait();
++  after_wait = freepages();
++  close(fd[0]);
++  close(fd[1]);
++
++  printf(1, "(v)   after fork(): &gvar va = 0x%x in both processes\n", (uint)&gvar);
++  printf(1, "      parent pa = 0x%x\n", pa_parent);
++  printf(1, "      child  pa = 0x%x  -> %s\n", pa_child,
++         pa_parent != pa_child ? "different (fork copied the page)" : "SAME (unexpected)");
++  printf(1, "      freepages() before fork        = %d\n", before_fork);
++  printf(1, "      freepages() after fork         = %d  (child holds %d pages)\n",
++         after_fork, before_fork - after_fork);
++  printf(1, "      freepages() after child reaped = %d  -> %s\n", after_wait,
++         after_wait == before_fork ? "equal to before fork, no leak" : "LEAK");
++  exit();
++}
+diff --git a/sem.c b/sem.c
+new file mode 100644
+index 0000000..917e9ff
+--- /dev/null
++++ b/sem.c
+@@ -0,0 +1,97 @@
++// Counting semaphores for user processes (Question 1).
++// A fixed table of NSEM semaphores lives in the kernel, so it is shared by
++// a parent and every child it creates with fork().
++
++#include "types.h"
++#include "defs.h"
++#include "param.h"
++#include "mmu.h"
++#include "proc.h"
++#include "spinlock.h"
++
++#define NSEM 8
++
++struct sem {
++  int value;      // current count (never negative)
++  int used;       // 1 once sem_init has been called on this id
++};
++
++struct {
++  struct spinlock lock;   // protects every entry of sem[]
++  struct sem sem[NSEM];
++} semtable;
++
++// Called once from main() at boot.
++void
++seminit(void)
++{
++  initlock(&semtable.lock, "semtable");
++}
++
++static int
++badid(int id)
++{
++  return id < 0 || id >= NSEM;
++}
++
++// Set semaphore id to value (value >= 0). Returns 0, or -1 on bad id/value.
++int
++sem_init(int id, int value)
++{
++  if(badid(id) || value < 0)
++    return -1;
++  acquire(&semtable.lock);
++  semtable.sem[id].value = value;
++  semtable.sem[id].used = 1;
++  release(&semtable.lock);
++  return 0;
++}
++
++// P(): block while the value is 0, then decrement it.
++int
++sem_wait(int id)
++{
++  struct sem *s;
++
++  if(badid(id))
++    return -1;
++  s = &semtable.sem[id];
++  acquire(&semtable.lock);
++  if(!s->used){
++    release(&semtable.lock);
++    return -1;
++  }
++  // Re-check after every wake-up: sem_post wakes all waiters but only
++  // one of them may get the unit. sleep() releases semtable.lock
++  // atomically, so a post between the check and the sleep is not lost.
++  while(s->value == 0){
++    if(myproc()->killed){
++      release(&semtable.lock);
++      return -1;
++    }
++    sleep(s, &semtable.lock);
++  }
++  s->value--;
++  release(&semtable.lock);
++  return 0;
++}
++
++// V(): increment the value and wake every process sleeping on it.
++int
++sem_post(int id)
++{
++  struct sem *s;
++
++  if(badid(id))
++    return -1;
++  s = &semtable.sem[id];
++  acquire(&semtable.lock);
++  if(!s->used){
++    release(&semtable.lock);
++    return -1;
++  }
++  s->value++;
++  wakeup(s);   // called with semtable.lock held, same lock sem_wait sleeps with
++  release(&semtable.lock);
++  return 0;
++}
+diff --git a/synctest.c b/synctest.c
+new file mode 100644
+index 0000000..bb0d832
+--- /dev/null
++++ b/synctest.c
+@@ -0,0 +1,53 @@
++// Question 1(c): three children print A, B, C five times each, forced into
++// the order A B C A B C ... using only semaphores (no sleep(), no spinning).
++//
++// Semaphore i lets child i print once. It is initialised to 1 for child A and
++// 0 for B and C. After printing, child i posts semaphore (i+1)%3, handing the
++// turn to the next child, so exactly one child can print at any moment.
++
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++#define NCHILD 3
++#define ROUNDS 5
++
++int
++main(void)
++{
++  int i, r;
++
++  // error cases required by 1(b)
++  printf(1, "sem_init(8, 1)  = %d  (invalid id)\n", sem_init(8, 1));
++  printf(1, "sem_init(0, -1) = %d  (negative value)\n", sem_init(0, -1));
++  printf(1, "sem_wait(-1)    = %d  (invalid id)\n", sem_wait(-1));
++  printf(1, "sem_post(7)     = %d  (never initialised)\n", sem_post(7));
++  printf(1, "sem_wait(7)     = %d  (never initialised)\n", sem_wait(7));
++
++  if(sem_init(0, 1) < 0 || sem_init(1, 0) < 0 || sem_init(2, 0) < 0){
++    printf(1, "synctest: sem_init failed\n");
++    exit();
++  }
++  printf(1, "sem 0,1,2 initialised to 1,0,0\n");
++
++  for(i = 0; i < NCHILD; i++){
++    int pid = fork();
++    if(pid < 0){
++      printf(1, "synctest: fork failed\n");
++      exit();
++    }
++    if(pid == 0){
++      for(r = 0; r < ROUNDS; r++){
++        sem_wait(i);                    // wait for my turn
++        printf(1, "%c ", 'A' + i);
++        sem_post((i + 1) % NCHILD);     // pass the turn on
++      }
++      exit();
++    }
++  }
++
++  for(i = 0; i < NCHILD; i++)
++    wait();
++  printf(1, "\nDone\n");
++  exit();
++}
+diff --git a/syscall.c b/syscall.c
+index ee85261..fca4d6e 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -103,6 +103,11 @@ extern int sys_unlink(void);
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_sem_init(void);
++extern int sys_sem_wait(void);
++extern int sys_sem_post(void);
++extern int sys_freepages(void);
++extern int sys_va2pa(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -126,6 +131,11 @@ static int (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_sem_init]  sys_sem_init,
++[SYS_sem_wait]  sys_sem_wait,
++[SYS_sem_post]  sys_sem_post,
++[SYS_freepages] sys_freepages,
++[SYS_va2pa]     sys_va2pa,
+ };
+ 
+ void
+diff --git a/syscall.h b/syscall.h
+index bc5f356..67fa33e 100644
+--- a/syscall.h
++++ b/syscall.h
+@@ -20,3 +20,8 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_sem_init  22
++#define SYS_sem_wait  23
++#define SYS_sem_post  24
++#define SYS_freepages 25
++#define SYS_va2pa     26
+diff --git a/sysproc.c b/sysproc.c
+index 0686d29..4e52a6c 100644
+--- a/sysproc.c
++++ b/sysproc.c
+@@ -89,3 +89,51 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++// Question 1: counting semaphores
++int
++sys_sem_init(void)
++{
++  int id, value;
++
++  if(argint(0, &id) < 0 || argint(1, &value) < 0)
++    return -1;
++  return sem_init(id, value);
++}
++
++int
++sys_sem_wait(void)
++{
++  int id;
++
++  if(argint(0, &id) < 0)
++    return -1;
++  return sem_wait(id);
++}
++
++int
++sys_sem_post(void)
++{
++  int id;
++
++  if(argint(0, &id) < 0)
++    return -1;
++  return sem_post(id);
++}
++
++// Question 2: memory statistics and address translation
++int
++sys_freepages(void)
++{
++  return freepages();
++}
++
++int
++sys_va2pa(void)
++{
++  int va;
++
++  if(argint(0, &va) < 0)
++    return -1;
++  return uva2pa(myproc()->pgdir, (uint)va);
++}
+diff --git a/user.h b/user.h
+index 4f99c52..071b503 100644
+--- a/user.h
++++ b/user.h
+@@ -23,6 +23,11 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int sem_init(int id, int value);
++int sem_wait(int id);
++int sem_post(int id);
++int freepages(void);
++int va2pa(int va);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/usys.S b/usys.S
+index 8bfd8a1..fbb02c0 100644
+--- a/usys.S
++++ b/usys.S
+@@ -29,3 +29,8 @@ SYSCALL(getpid)
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(sem_init)
++SYSCALL(sem_wait)
++SYSCALL(sem_post)
++SYSCALL(freepages)
++SYSCALL(va2pa)
+diff --git a/vm.c b/vm.c
+index 7134cff..02a411f 100644
+--- a/vm.c
++++ b/vm.c
+@@ -392,3 +392,17 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
+ //PAGEBREAK!
+ // Blank page.
+ 
++
++// Translate user virtual address va in page directory pgdir to a physical
++// address (Question 2). Returns -1 if the page is not present or is not
++// accessible from user mode (PTE_U clear).
++int
++uva2pa(pde_t *pgdir, uint va)
++{
++  pte_t *pte;
++
++  pte = walkpgdir(pgdir, (void*)va, 0);
++  if(pte == 0 || (*pte & PTE_P) == 0 || (*pte & PTE_U) == 0)
++    return -1;
++  return PTE_ADDR(*pte) | (va & 0xFFF);
++}
