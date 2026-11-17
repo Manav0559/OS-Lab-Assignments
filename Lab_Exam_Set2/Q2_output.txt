@@ -1,0 +1,19 @@
+$ make qemu-nox CPUS=1
+qemu-system-i386 -nographic -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 1 -m 512
+Booting from Hard Disk..xv6...
+cpu0: starting 0
+sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap start 58
+init: starting sh
+$ echo 2402MC02
+2402MC02
+$ schedtest
+parent pid 7: priority 10 -> 1
+set_priority(8, 5) returned old priority 10
+set_priority(9, 10) returned old priority 10
+set_priority(10, 15) returned old priority 10
+set_priority(9999, 5) = -1, set_priority(8, 21) = -1
+child pid 8 priority 5 finished (ran from tick 97 to 108)
+child pid 9 priority 10 finished (ran from tick 109 to 119)
+child pid 10 priority 15 finished (ran from tick 120 to 131)
+Done
+$ 

@@ -1,0 +1,29 @@
+$ make qemu-nox CPUS=1
+qemu-system-i386 -nographic -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 1 -m 512
+Booting from Hard Disk..xv6...
+cpu0: starting 0
+sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap start 58
+init: starting sh
+$ echo 2402MC02
+2402MC02
+$ prottest
+page at 0x3000, page aligned: yes
+wrote A
+
+(i) mprotect(p, 1) = 0
+    read after mprotect: A
+
+(ii) child tries to write to the read-only page
+pid 5 prottest: trap 14 err 7 on cpu 0 eip 0xae addr 0x3000--kill proc
+    parent: child 5 is gone, page still has A
+
+(iii) munprotect(p, 1) = 0
+     write after munprotect: C
+
+(iv) error cases
+     mprotect(p + 1, 1)    = -1   unaligned address
+     mprotect(p, 0)        = -1   len = 0
+     mprotect(p, -2)       = -1   len < 0
+     mprotect(p, 2)        = -1   range goes past sz
+     mprotect(p + 4096, 1) = -1   page after sz
+$ 
