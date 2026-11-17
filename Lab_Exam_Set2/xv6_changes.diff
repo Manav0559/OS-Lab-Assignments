@@ -1,0 +1,380 @@
+diff --git a/Makefile b/Makefile
+index 09d790c..7a50bfc 100644
+--- a/Makefile
++++ b/Makefile
+@@ -38,6 +38,8 @@ OBJS = \
+ ifndef TOOLPREFIX
+ TOOLPREFIX := $(shell if i386-jos-elf-objdump -i 2>&1 | grep '^elf32-i386$$' >/dev/null 2>&1; \
+ 	then echo 'i386-jos-elf-'; \
++	elif i686-elf-objdump -i 2>&1 | grep '^elf32-i386$$' >/dev/null 2>&1; \
++	then echo 'i686-elf-'; \
+ 	elif objdump -i 2>&1 | grep 'elf32-i386' >/dev/null 2>&1; \
+ 	then echo ''; \
+ 	else echo "***" 1>&2; \
+@@ -76,7 +78,7 @@ AS = $(TOOLPREFIX)gas
+ LD = $(TOOLPREFIX)ld
+ OBJCOPY = $(TOOLPREFIX)objcopy
+ OBJDUMP = $(TOOLPREFIX)objdump
+-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
++CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -Wno-array-bounds -Wno-infinite-recursion -Wno-stringop-overflow -Wno-unused-but-set-variable -fno-omit-frame-pointer
+ CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
+ ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
+ # FreeBSD ld wants ``elf_i386_fbsd''
+@@ -181,6 +183,8 @@ UPROGS=\
+ 	_usertests\
+ 	_wc\
+ 	_zombie\
++	_prottest\
++	_schedtest\
+ 
+ fs.img: mkfs README $(UPROGS)
+ 	./mkfs fs.img README $(UPROGS)
+diff --git a/defs.h b/defs.h
+index 82fb982..cbaaf28 100644
+--- a/defs.h
++++ b/defs.h
+@@ -107,6 +107,7 @@ int             cpuid(void);
+ void            exit(void);
+ int             fork(void);
+ int             growproc(int);
++int             set_priority(int, int);
+ int             kill(int);
+ struct cpu*     mycpu(void);
+ struct proc*    myproc();
+@@ -174,6 +175,7 @@ void            uartputc(int);
+ void            seginit(void);
+ void            kvmalloc(void);
+ pde_t*          setupkvm(void);
++int             setwritable(pde_t*, uint, uint, int, int);
+ char*           uva2ka(pde_t*, char*);
+ int             allocuvm(pde_t*, uint, uint);
+ int             deallocuvm(pde_t*, uint, uint);
+diff --git a/proc.c b/proc.c
+index 806b1b1..16ee6b1 100644
+--- a/proc.c
++++ b/proc.c
+@@ -88,6 +88,7 @@ allocproc(void)
+ found:
+   p->state = EMBRYO;
+   p->pid = nextpid++;
++  p->priority = 10;
+ 
+   release(&ptable.lock);
+ 
+@@ -322,7 +323,7 @@ wait(void)
+ void
+ scheduler(void)
+ {
+-  struct proc *p;
++  struct proc *p, *best;
+   struct cpu *c = mycpu();
+   c->proc = 0;
+   
+@@ -332,13 +333,16 @@ scheduler(void)
+ 
+     // Loop over process table looking for process to run.
+     acquire(&ptable.lock);
++    best = 0;
+     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+       if(p->state != RUNNABLE)
+         continue;
++      if(best == 0 || p->priority < best->priority)
++        best = p;
++    }
+ 
+-      // Switch to chosen process.  It is the process's job
+-      // to release ptable.lock and then reacquire it
+-      // before jumping back to us.
++    if(best){
++      p = best;
+       c->proc = p;
+       switchuvm(p);
+       p->state = RUNNING;
+@@ -346,8 +350,6 @@ scheduler(void)
+       swtch(&(c->scheduler), p->context);
+       switchkvm();
+ 
+-      // Process is done running for now.
+-      // It should have changed its p->state before coming back.
+       c->proc = 0;
+     }
+     release(&ptable.lock);
+@@ -532,3 +534,25 @@ procdump(void)
+     cprintf("\n");
+   }
+ }
++
++int
++set_priority(int pid, int priority)
++{
++  struct proc *p;
++  int old;
++
++  if(priority < 1 || priority > 20)
++    return -1;
++
++  acquire(&ptable.lock);
++  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
++    if(p->state != UNUSED && p->pid == pid){
++      old = p->priority;
++      p->priority = priority;
++      release(&ptable.lock);
++      return old;
++    }
++  }
++  release(&ptable.lock);
++  return -1;
++}
+diff --git a/proc.h b/proc.h
+index 1647114..a4d5e27 100644
+--- a/proc.h
++++ b/proc.h
+@@ -49,6 +49,7 @@ struct proc {
+   struct file *ofile[NOFILE];  // Open files
+   struct inode *cwd;           // Current directory
+   char name[16];               // Process name (debugging)
++  int priority;
+ };
+ 
+ // Process memory is laid out contiguously, low addresses first:
+diff --git a/prottest.c b/prottest.c
+new file mode 100644
+index 0000000..bdd0c6e
+--- /dev/null
++++ b/prottest.c
+@@ -0,0 +1,48 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++int
++main(void)
++{
++  char *p;
++  int pid;
++
++  p = sbrk(4096);
++  if(p == (char*)-1){
++    printf(1, "sbrk failed\n");
++    exit();
++  }
++  printf(1, "page at 0x%x, page aligned: %s\n", (uint)p, ((uint)p % 4096) == 0 ? "yes" : "no");
++  p[0] = 'A';
++  printf(1, "wrote %c\n", p[0]);
++
++  printf(1, "\n(i) mprotect(p, 1) = %d\n", mprotect(p, 1));
++  printf(1, "    read after mprotect: %c\n", p[0]);
++
++  printf(1, "\n(ii) child tries to write to the read-only page\n");
++  pid = fork();
++  if(pid < 0){
++    printf(1, "fork failed\n");
++    exit();
++  }
++  if(pid == 0){
++    p[0] = 'B';
++    printf(1, "    child: write went through, this is wrong\n");
++    exit();
++  }
++  wait();
++  printf(1, "    parent: child %d is gone, page still has %c\n", pid, p[0]);
++
++  printf(1, "\n(iii) munprotect(p, 1) = %d\n", munprotect(p, 1));
++  p[0] = 'C';
++  printf(1, "     write after munprotect: %c\n", p[0]);
++
++  printf(1, "\n(iv) error cases\n");
++  printf(1, "     mprotect(p + 1, 1)    = %d   unaligned address\n", mprotect(p + 1, 1));
++  printf(1, "     mprotect(p, 0)        = %d   len = 0\n", mprotect(p, 0));
++  printf(1, "     mprotect(p, -2)       = %d   len < 0\n", mprotect(p, -2));
++  printf(1, "     mprotect(p, 2)        = %d   range goes past sz\n", mprotect(p, 2));
++  printf(1, "     mprotect(p + 4096, 1) = %d   page after sz\n", mprotect(p + 4096, 1));
++  exit();
++}
+diff --git a/schedtest.c b/schedtest.c
+new file mode 100644
+index 0000000..cf94ba9
+--- /dev/null
++++ b/schedtest.c
+@@ -0,0 +1,45 @@
++#include "types.h"
++#include "stat.h"
++#include "user.h"
++
++#define LOOPS 40000000
++
++int
++main(void)
++{
++  int prio[3] = {5, 10, 15};
++  int pid[3];
++  int i, old;
++  volatile int x;
++
++  old = set_priority(getpid(), 1);
++  printf(1, "parent pid %d: priority %d -> 1\n", getpid(), old);
++
++  for(i = 0; i < 3; i++){
++    pid[i] = fork();
++    if(pid[i] < 0){
++      printf(1, "fork failed\n");
++      exit();
++    }
++    if(pid[i] == 0){
++      int start = uptime();
++      for(x = 0; x < LOOPS; x++)
++        ;
++      printf(1, "child pid %d priority %d finished (ran from tick %d to %d)\n",
++             getpid(), prio[i], start, uptime());
++      exit();
++    }
++  }
++
++  for(i = 0; i < 3; i++){
++    old = set_priority(pid[i], prio[i]);
++    printf(1, "set_priority(%d, %d) returned old priority %d\n", pid[i], prio[i], old);
++  }
++  printf(1, "set_priority(9999, 5) = %d, set_priority(%d, 21) = %d\n",
++         set_priority(9999, 5), pid[0], set_priority(pid[0], 21));
++
++  for(i = 0; i < 3; i++)
++    wait();
++  printf(1, "Done\n");
++  exit();
++}
+diff --git a/syscall.c b/syscall.c
+index ee85261..87ab0be 100644
+--- a/syscall.c
++++ b/syscall.c
+@@ -103,6 +103,9 @@ extern int sys_unlink(void);
+ extern int sys_wait(void);
+ extern int sys_write(void);
+ extern int sys_uptime(void);
++extern int sys_mprotect(void);
++extern int sys_munprotect(void);
++extern int sys_set_priority(void);
+ 
+ static int (*syscalls[])(void) = {
+ [SYS_fork]    sys_fork,
+@@ -126,6 +129,9 @@ static int (*syscalls[])(void) = {
+ [SYS_link]    sys_link,
+ [SYS_mkdir]   sys_mkdir,
+ [SYS_close]   sys_close,
++[SYS_mprotect]     sys_mprotect,
++[SYS_munprotect]   sys_munprotect,
++[SYS_set_priority] sys_set_priority,
+ };
+ 
+ void
+diff --git a/syscall.h b/syscall.h
+index bc5f356..e5b28f0 100644
+--- a/syscall.h
++++ b/syscall.h
+@@ -20,3 +20,6 @@
+ #define SYS_link   19
+ #define SYS_mkdir  20
+ #define SYS_close  21
++#define SYS_mprotect     22
++#define SYS_munprotect   23
++#define SYS_set_priority 24
+diff --git a/sysproc.c b/sysproc.c
+index 0686d29..c0741b9 100644
+--- a/sysproc.c
++++ b/sysproc.c
+@@ -89,3 +89,33 @@ sys_uptime(void)
+   release(&tickslock);
+   return xticks;
+ }
++
++int
++sys_mprotect(void)
++{
++  int addr, len;
++
++  if(argint(0, &addr) < 0 || argint(1, &len) < 0)
++    return -1;
++  return setwritable(myproc()->pgdir, myproc()->sz, (uint)addr, len, 0);
++}
++
++int
++sys_munprotect(void)
++{
++  int addr, len;
++
++  if(argint(0, &addr) < 0 || argint(1, &len) < 0)
++    return -1;
++  return setwritable(myproc()->pgdir, myproc()->sz, (uint)addr, len, 1);
++}
++
++int
++sys_set_priority(void)
++{
++  int pid, priority;
++
++  if(argint(0, &pid) < 0 || argint(1, &priority) < 0)
++    return -1;
++  return set_priority(pid, priority);
++}
+diff --git a/user.h b/user.h
+index 4f99c52..90a58cd 100644
+--- a/user.h
++++ b/user.h
+@@ -23,6 +23,9 @@ int getpid(void);
+ char* sbrk(int);
+ int sleep(int);
+ int uptime(void);
++int mprotect(void *addr, int len);
++int munprotect(void *addr, int len);
++int set_priority(int pid, int priority);
+ 
+ // ulib.c
+ int stat(const char*, struct stat*);
+diff --git a/usys.S b/usys.S
+index 8bfd8a1..a8a3e5e 100644
+--- a/usys.S
++++ b/usys.S
+@@ -29,3 +29,6 @@ SYSCALL(getpid)
+ SYSCALL(sbrk)
+ SYSCALL(sleep)
+ SYSCALL(uptime)
++SYSCALL(mprotect)
++SYSCALL(munprotect)
++SYSCALL(set_priority)
+diff --git a/vm.c b/vm.c
+index 7134cff..5212e40 100644
+--- a/vm.c
++++ b/vm.c
+@@ -392,3 +392,33 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
+ //PAGEBREAK!
+ // Blank page.
+ 
++
++int
++setwritable(pde_t *pgdir, uint sz, uint addr, int len, int writable)
++{
++  uint a, end;
++  pte_t *pte;
++
++  if(addr % PGSIZE != 0 || len <= 0 || len > sz / PGSIZE)
++    return -1;
++  end = addr + len * PGSIZE;
++  if(end > sz)
++    return -1;
++
++  for(a = addr; a < end; a += PGSIZE){
++    pte = walkpgdir(pgdir, (char*)a, 0);
++    if(pte == 0 || !(*pte & PTE_P) || !(*pte & PTE_U))
++      return -1;
++  }
++
++  for(a = addr; a < end; a += PGSIZE){
++    pte = walkpgdir(pgdir, (char*)a, 0);
++    if(writable)
++      *pte |= PTE_W;
++    else
++      *pte &= ~PTE_W;
++  }
++
++  lcr3(V2P(pgdir));
++  return 0;
++}
