@@ -1,0 +1,20 @@
+$ make qemu-nox CPUS=1
+qemu-system-i386 -nographic -drive file=fs.img,index=1,media=disk,format=raw -drive file=xv6.img,index=0,media=disk,format=raw -smp 1 -m 512
+Booting from Hard Disk..xv6...
+cpu0: starting 0
+sb: size 1000 nblocks 941 ninodes 200 nlog 30 logstart 2 inodestart 32 bmap start 58
+init: starting sh
+$ echo 2402MC02
+2402MC02
+$ memtest
+(i)   freepages() at start-up        = 56789
+(ii)  freepages() after sbrk(10*4096) = 56779  (used 10 pages)
+(iii) &gvar: va = 0xC20  pa = 0xDE9FC20
+(iv)  va2pa(0x7FFFFFFF) = -1
+(v)   after fork(): &gvar va = 0xC20 in both processes
+      parent pa = 0xDE9FC20
+      child  pa = 0xDEABC20  -> different (fork copied the page)
+      freepages() before fork        = 56778
+      freepages() after fork         = 56698  (child holds 80 pages)
+      freepages() after child reaped = 56778  -> equal to before fork, no leak
+$ 

@@ -1,6 +1,6 @@
 # OS Lab Assignments
 
-Manav Singla, 2402MC02. Operating Systems lab work on xv6 (RISC-V for 5-7, x86 for 8-10).
+Manav Singla, 2402MC02. Operating Systems lab work on xv6 (RISC-V for 5-7, x86 for 8-10 and the lab exam).
 
 | Folder | Topic |
 |---|---|
@@ -10,5 +10,6 @@ Manav Singla, 2402MC02. Operating Systems lab work on xv6 (RISC-V for 5-7, x86 f
 | [Assignment_08](Assignment_08) | Memory management on xv6 x86: va2pa, getmeminfo, vmprint, lazy heap allocation |
 | [Assignment_09](Assignment_09) | Page table printing, lazy allocation with fault counting, FIFO vs LRU page replacement (xv6 x86) |
 | [Assignment_10](Assignment_10) | Page allocator statistics, virtual-to-physical translation, read-only pages and page faults, FIFO vs LRU vs Optimal (xv6 x86) |
+| [Lab_Exam_Set1](Lab_Exam_Set1) | Lab exam practice (Set 1, xv6 x86): counting semaphores (sem_init/sem_wait/sem_post, A B C ordering), freepages() and va2pa() |
 
 Each folder has its own README with build and run steps.
